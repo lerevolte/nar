@@ -54,7 +54,7 @@ PriceSpecification: priceCurrency, price, valueReference"
 - [x] BreadcrumbList глобально
 - [x] SiteNavigationElement глобально
 - [x] Service + Offer на /tarify
-- [ ] WebPage + ContactPoint на /help
+- [x] WebPage + ContactPoint на /help
 - [ ] BlogPosting для обычных статей
 - [ ] BlogPosting + HowTo для гайдов
 - [ ] ItemList + BlogPosting на /articles + "Читайте также"

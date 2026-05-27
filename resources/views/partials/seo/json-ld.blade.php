@@ -130,6 +130,31 @@
         }
     }
 
+    if (in_array('help', $include, true)) {
+        $help = config('site.help');
+        $orgConfig = config('site.organization');
+        $helpPage = $page ?? null;
+
+        $webPage = [
+            '@type' => 'WebPage',
+            'name' => $helpPage->title ?? 'Помощь',
+            'url' => $siteUrl . $help['url_path'],
+            'mainEntity' => [
+                '@type' => 'ContactPoint',
+                'contactType' => $help['contact_type'],
+                'availableLanguage' => $help['available_language'],
+                'email' => $orgConfig['email'],
+            ],
+        ];
+
+        $desc = $helpPage->final_seo_description ?? null;
+        if (!empty($desc)) {
+            $webPage['description'] = $desc;
+        }
+
+        $graph[] = $webPage;
+    }
+
     if (in_array('tariff', $include, true)) {
         $tariff = config('site.tariff');
         $packages = config('yookassa.packages', []);

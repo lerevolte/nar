@@ -70,4 +70,11 @@ return [
         'price_currency' => 'RUB',
         'unit_text' => 'songs',
     ],
+
+    'help' => [
+        'page_slug' => 'help',
+        'url_path' => '/help',
+        'contact_type' => 'customer support',
+        'available_language' => ['Russian'],
+    ],
 ];

@@ -4,8 +4,17 @@
 
 @section('jsonld')
     @php
-        $isTariff = ($page->slug ?? null) === config('site.tariff.page_slug');
-        $jsonldInclude = array_merge(['breadcrumb'], $isTariff ? ['organization', 'tariff'] : []);
+        $slug = $page->slug ?? null;
+        $isTariff = $slug === config('site.tariff.page_slug');
+        $isHelp = $slug === config('site.help.page_slug');
+
+        $jsonldInclude = ['breadcrumb'];
+        if ($isTariff) {
+            $jsonldInclude = array_merge($jsonldInclude, ['organization', 'tariff']);
+        }
+        if ($isHelp) {
+            $jsonldInclude[] = 'help';
+        }
     @endphp
     @include('partials.seo.json-ld', [
         'include' => $jsonldInclude,

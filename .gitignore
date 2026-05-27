@@ -1,0 +1,63 @@
+cd /var/www/narepite-web/
+cat > .gitignore << 'EOF'
+# Dependencies
+/vendor
+/node_modules
+
+# Environment files (НИКОГДА не коммитим — там пароли БД, ключи API)
+.env
+.env.backup
+.env.production
+.env.*.local
+.env.local
+
+# Laravel storage (логи, кеши, временные файлы)
+/storage/*
+
+
+# Bootstrap cache
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitignore
+
+# Public — артефакты Vite (если используется)
+/public/hot
+/public/build
+/public/storage
+/public/music
+/public/uploads
+/public/covers
+/public/hot
+/public/build
+/public/storage
+
+# Тестирование и кеш
+.phpunit.result.cache
+.phpunit.cache
+/.phpactor.json
+
+# Homestead/Vagrant
+Homestead.json
+Homestead.yaml
+/.vagrant
+
+# IDE
+/.idea
+/.vscode
+/.fleet
+/.zed
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime артефакты
+nohup.out
+*.log
+worker.log
+
+# Claude Code (личные настройки)
+.claude/settings.local.json
+

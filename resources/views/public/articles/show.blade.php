@@ -43,9 +43,13 @@
         if (!empty($article->is_guide)) {
             $articleIncludes[] = 'howto';
         }
+        if (!empty($relatedArticles) && $relatedArticles->isNotEmpty()) {
+            $articleIncludes[] = 'related-articles';
+        }
     @endphp
     @include('partials.seo.json-ld', [
         'include' => $articleIncludes,
+        'relatedArticles' => $relatedArticles ?? collect(),
         'breadcrumbs' => [
             ['name' => 'Главная', 'url' => url('/')],
             ['name' => 'Статьи', 'url' => route('public.articles.index')],

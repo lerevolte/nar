@@ -403,6 +403,52 @@
         }
     }
 
+    if (in_array('related-articles', $include, true) && !empty($relatedArticles ?? null)) {
+        $elements = [];
+        $position = 1;
+        foreach ($relatedArticles as $a) {
+            $articleUrl = $siteUrl . '/articles/' . $a->slug;
+
+            $imageUrl = null;
+            foreach (['og_image', 'cover_thumb_url', 'cover_url', 'banner_url'] as $field) {
+                if (!empty($a->{$field})) {
+                    $imageUrl = $absUrl($a->{$field});
+                    break;
+                }
+            }
+
+            $item = [
+                '@type' => 'BlogPosting',
+                'headline' => $a->title,
+                'url' => $articleUrl,
+            ];
+
+            if ($imageUrl) {
+                $item['image'] = $imageUrl;
+            }
+
+            $datePublished = $a->published_at ?? $a->created_at;
+            if ($datePublished) {
+                $item['datePublished'] = $datePublished->toIso8601String();
+            }
+
+            $elements[] = [
+                '@type' => 'ListItem',
+                'position' => $position++,
+                'item' => $item,
+            ];
+        }
+
+        if (!empty($elements)) {
+            $graph[] = [
+                '@type' => 'ItemList',
+                'name' => 'Читайте также',
+                'numberOfItems' => count($elements),
+                'itemListElement' => $elements,
+            ];
+        }
+    }
+
     if (in_array('breadcrumb', $include, true) && !empty($breadcrumbs ?? null)) {
         $crumbs = array_values($breadcrumbs);
         $count = count($crumbs);

@@ -190,6 +190,7 @@ class ArticleController extends Controller
             'canonical_url' => 'nullable|string|max:500',
             'noindex' => 'nullable|boolean',
             'is_published' => 'nullable|boolean',
+            'is_guide' => 'nullable|boolean',
             'blocks' => 'nullable|array',
             'blocks.*.type' => 'required|string',
             'blocks.*.data' => 'nullable|array',
@@ -234,6 +235,7 @@ class ArticleController extends Controller
             'canonical_url' => $request->input('canonical_url'),
             'noindex' => (bool) $request->input('noindex'),
             'is_published' => $isPublished,
+            'is_guide' => (bool) $request->input('is_guide'),
             'blocks' => $request->input('blocks') ?: null,
         ]);
 

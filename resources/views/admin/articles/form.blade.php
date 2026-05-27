@@ -529,6 +529,12 @@
                     {{ old('is_published', $article->is_published) ? 'checked' : '' }}>
                 <label for="is_published">Опубликовано</label>
             </div>
+
+            <div class="checkbox-row">
+                <input type="checkbox" name="is_guide" id="is_guide" value="1"
+                    {{ old('is_guide', $article->is_guide) ? 'checked' : '' }}>
+                <label for="is_guide">Это пошаговый гайд (для HowTo-разметки)</label>
+            </div>
         </div>
 
         <!-- КОНТЕНТ -->

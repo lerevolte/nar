@@ -42,6 +42,7 @@
     @stack('styles')
 
     @yield('jsonld')
+    @include('partials.seo.json-ld', ['include' => ['site-nav']])
 </head>
 <body class="bg-white font-sans text-gray-800 antialiased page-flex">
 
@@ -78,34 +79,40 @@
 
     <!-- Sidebar (mobile menu) -->
     <div id="sidebar-overlay" class="sidebar-overlay"></div>
-    <nav id="sidebar-menu" class="sidebar-menu">
+    @php
+        $navCurrent = url()->current();
+        $navAriaCurrent = fn ($url) => $navCurrent === $url ? ' aria-current="page"' : '';
+    @endphp
+    <nav id="sidebar-menu" class="sidebar-menu" aria-label="Главное меню">
         <button id="sidebar-close" class="sidebar-menu-close">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
         <div class="sidebar-nav">
-            <a href="/">Главная</a>
-            <a href="/articles">Статьи</a>
+            <a href="/"{!! $navAriaCurrent(url('/')) !!}>Главная</a>
+            <a href="/articles"{!! $navAriaCurrent(url('/articles')) !!}>Статьи</a>
             @if(isset($menuPages))
                 @foreach($menuPages as $p)
-                    @if($p->children->isNotEmpty())
-                        <a href="{{ route('public.pages.show.child', [$p->slug, $p->children->first()->slug]) }}">{{ $p->title }}</a>
-                    @else
-                        <a href="{{ route('public.pages.show', $p->slug) }}">{{ $p->title }}</a>
-                    @endif
+                    @php
+                        $pUrl = $p->children->isNotEmpty()
+                            ? route('public.pages.show.child', [$p->slug, $p->children->first()->slug])
+                            : route('public.pages.show', $p->slug);
+                    @endphp
+                    <a href="{{ $pUrl }}"{!! $navAriaCurrent($pUrl) !!}>{{ $p->title }}</a>
                 @endforeach
             @endif
             @if(isset($menuStaticPages))
                 @foreach($menuStaticPages as $sp)
-                    <a href="{{ route('public.static-pages.show', $sp->slug) }}">{{ $sp->title }}</a>
+                    @php $spUrl = route('public.static-pages.show', $sp->slug); @endphp
+                    <a href="{{ $spUrl }}"{!! $navAriaCurrent($spUrl) !!}>{{ $sp->title }}</a>
                 @endforeach
             @endif
-            <a href="/create-song">Создать трек</a>
+            <a href="/create-song"{!! $navAriaCurrent(url('/create-song')) !!}>Создать трек</a>
             @if(isset($authUser) && $authUser)
-                <a href="{{ route('charts.index') }}">Чарты</a>
-                <a href="{{ route('dashboard') }}">Личный кабинет</a>
+                <a href="{{ route('charts.index') }}"{!! $navAriaCurrent(route('charts.index')) !!}>Чарты</a>
+                <a href="{{ route('dashboard') }}"{!! $navAriaCurrent(route('dashboard')) !!}>Личный кабинет</a>
             @else
-                <a href="{{ route('login') }}">Вход</a>
-                <a href="{{ route('register') }}">Регистрация</a>
+                <a href="{{ route('login') }}"{!! $navAriaCurrent(route('login')) !!}>Вход</a>
+                <a href="{{ route('register') }}"{!! $navAriaCurrent(route('register')) !!}>Регистрация</a>
             @endif
         </div>
     </nav>

@@ -130,6 +130,40 @@
         }
     }
 
+    if (in_array('site-nav', $include, true)) {
+        $hasPart = [
+            ['@type' => 'WebPage', 'name' => 'Главная', 'url' => $siteUrl],
+            ['@type' => 'WebPage', 'name' => 'Статьи', 'url' => $siteUrl . '/articles'],
+        ];
+
+        if (!empty($menuPages ?? null)) {
+            foreach ($menuPages as $p) {
+                if ($p->children && $p->children->isNotEmpty()) {
+                    $url = $siteUrl . '/pages/' . $p->slug . '/' . $p->children->first()->slug;
+                } else {
+                    $url = $siteUrl . '/pages/' . $p->slug;
+                }
+                $hasPart[] = ['@type' => 'WebPage', 'name' => $p->title, 'url' => $url];
+            }
+        }
+
+        if (!empty($menuStaticPages ?? null)) {
+            foreach ($menuStaticPages as $sp) {
+                $hasPart[] = ['@type' => 'WebPage', 'name' => $sp->title, 'url' => $siteUrl . '/' . $sp->slug];
+            }
+        }
+
+        $hasPart[] = ['@type' => 'WebPage', 'name' => 'Создать трек', 'url' => $siteUrl . '/create-song'];
+        $hasPart[] = ['@type' => 'WebPage', 'name' => 'Вход', 'url' => $siteUrl . '/login'];
+        $hasPart[] = ['@type' => 'WebPage', 'name' => 'Регистрация', 'url' => $siteUrl . '/register'];
+
+        $graph[] = [
+            '@type' => 'SiteNavigationElement',
+            'name' => 'Главное меню',
+            'hasPart' => $hasPart,
+        ];
+    }
+
     if (in_array('breadcrumb', $include, true) && !empty($breadcrumbs ?? null)) {
         $crumbs = array_values($breadcrumbs);
         $count = count($crumbs);

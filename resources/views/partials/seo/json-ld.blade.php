@@ -130,8 +130,27 @@
         }
     }
 
+    $articleHtml = '';
+    if (!empty($article ?? null)) {
+        if (!empty($article->blocks) && is_array($article->blocks)) {
+            foreach ($article->blocks as $block) {
+                $type = $block['type'] ?? null;
+                $data = $block['data'] ?? [];
+                if ($type === 'gradient_text' && !empty($data['html'])) {
+                    $articleHtml .= "\n" . $data['html'];
+                } elseif ($type === 'image_full' && !empty($data['url'])) {
+                    $alt = $data['alt'] ?? '';
+                    $articleHtml .= "\n<img src=\"" . htmlspecialchars($data['url'], ENT_QUOTES) . "\" alt=\"" . htmlspecialchars($alt, ENT_QUOTES) . "\" />";
+                }
+            }
+        }
+        if (trim($articleHtml) === '') {
+            $articleHtml = $article->content_html ?? '';
+        }
+    }
+
     if (in_array('howto', $include, true) && !empty($article ?? null)) {
-        $html = $article->content_html ?? '';
+        $html = $articleHtml;
         $stepRegex = '/<(?:b|strong)>\s*(Шаг\s+\d+.*?)\s*<\/(?:b|strong)>/iu';
 
         if (preg_match_all($stepRegex, $html, $matches, PREG_OFFSET_CAPTURE | PREG_PATTERN_ORDER)) {
@@ -224,7 +243,7 @@
             $entity['dateModified'] = $article->updated_at->toIso8601String();
         }
 
-        $articleBody = trim(strip_tags($article->content_html ?? ''));
+        $articleBody = trim(strip_tags($articleHtml));
         if (!empty($articleBody)) {
             $entity['articleBody'] = $articleBody;
         }

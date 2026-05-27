@@ -55,7 +55,7 @@ PriceSpecification: priceCurrency, price, valueReference"
 - [x] SiteNavigationElement глобально
 - [x] Service + Offer на /tarify
 - [x] WebPage + ContactPoint на /help
-- [ ] BlogPosting для обычных статей
+- [x] BlogPosting для обычных статей
 - [ ] BlogPosting + HowTo для гайдов
 - [ ] ItemList + BlogPosting на /articles + "Читайте также"
 - [ ] Service + MusicComposition + FAQPage для /pages/povod-dlya-pesni/

@@ -130,6 +130,48 @@
         }
     }
 
+    if (in_array('blog-posting', $include, true) && !empty($article ?? null)) {
+        $articleUrl = $siteUrl . '/articles/' . $article->slug;
+
+        $imageUrl = null;
+        foreach (['og_image', 'banner_url', 'cover_url'] as $field) {
+            if (!empty($article->{$field})) {
+                $imageUrl = $absUrl($article->{$field});
+                break;
+            }
+        }
+
+        $entity = [
+            '@type' => 'BlogPosting',
+            'headline' => $article->title,
+            'url' => $articleUrl,
+            'mainEntityOfPage' => $articleUrl,
+            'description' => $article->final_seo_description,
+            'publisher' => ['@id' => $orgId],
+        ];
+
+        if ($imageUrl) {
+            $entity['image'] = [
+                '@type' => 'ImageObject',
+                'url' => $imageUrl,
+            ];
+        }
+
+        if ($article->published_at) {
+            $entity['datePublished'] = $article->published_at->toIso8601String();
+        }
+        if ($article->updated_at) {
+            $entity['dateModified'] = $article->updated_at->toIso8601String();
+        }
+
+        $articleBody = trim(strip_tags($article->content_html ?? ''));
+        if (!empty($articleBody)) {
+            $entity['articleBody'] = $articleBody;
+        }
+
+        $graph[] = $entity;
+    }
+
     if (in_array('help', $include, true)) {
         $help = config('site.help');
         $orgConfig = config('site.organization');

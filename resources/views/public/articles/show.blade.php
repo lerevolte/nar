@@ -39,7 +39,7 @@
 
 @section('jsonld')
     @include('partials.seo.json-ld', [
-        'include' => ['breadcrumb'],
+        'include' => ['organization', 'breadcrumb', 'blog-posting'],
         'breadcrumbs' => [
             ['name' => 'Главная', 'url' => url('/')],
             ['name' => 'Статьи', 'url' => route('public.articles.index')],

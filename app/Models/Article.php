@@ -26,6 +26,7 @@ class Article extends Model
         'is_published',
         'views_count',
         'reading_time',
+        'is_guide',
         'related_ids',
         'published_at',
     ];
@@ -35,6 +36,7 @@ class Article extends Model
         'related_ids' => 'array',
         'is_published' => 'boolean',
         'noindex' => 'boolean',
+        'is_guide' => 'boolean',
         'views_count' => 'integer',
         'reading_time' => 'integer',
         'published_at' => 'datetime',

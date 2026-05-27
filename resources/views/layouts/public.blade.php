@@ -40,6 +40,8 @@
     </style>
 
     @stack('styles')
+
+    @yield('jsonld')
 </head>
 <body class="bg-white font-sans text-gray-800 antialiased page-flex">
 

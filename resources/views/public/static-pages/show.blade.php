@@ -3,8 +3,12 @@
 @section('title', $page->final_seo_title)
 
 @section('jsonld')
+    @php
+        $isTariff = ($page->slug ?? null) === config('site.tariff.page_slug');
+        $jsonldInclude = array_merge(['breadcrumb'], $isTariff ? ['organization', 'tariff'] : []);
+    @endphp
     @include('partials.seo.json-ld', [
-        'include' => ['breadcrumb'],
+        'include' => $jsonldInclude,
         'breadcrumbs' => [
             ['name' => 'Главная', 'url' => url('/')],
             ['name' => $page->title],

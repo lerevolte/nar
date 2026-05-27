@@ -130,6 +130,52 @@
         }
     }
 
+    if (in_array('tariff', $include, true)) {
+        $tariff = config('site.tariff');
+        $packages = config('yookassa.packages', []);
+        $tariffUrl = $siteUrl . $tariff['url_path'];
+
+        $itemList = [];
+        $pos = 1;
+        foreach ($packages as $songCount => $pkg) {
+            $itemList[] = [
+                '@type' => 'ListItem',
+                'position' => $pos++,
+                'item' => [
+                    '@type' => 'Offer',
+                    'name' => $pkg['name'],
+                    'description' => $pkg['name'] . ' за ' . $pkg['price'] . '₽',
+                    'priceSpecification' => [
+                        '@type' => 'PriceSpecification',
+                        'priceCurrency' => $tariff['price_currency'],
+                        'price' => $pkg['price'],
+                        'valueReference' => [
+                            '@type' => 'QuantitativeValue',
+                            'value' => (int) $songCount,
+                            'unitText' => $tariff['unit_text'],
+                        ],
+                    ],
+                    'availability' => 'https://schema.org/InStock',
+                    'url' => $tariffUrl,
+                ],
+            ];
+        }
+
+        $graph[] = [
+            '@type' => 'Service',
+            'name' => $tariff['name'],
+            'serviceType' => $tariff['service_type'],
+            'description' => $tariff['description'],
+            'areaServed' => $tariff['area_served'],
+            'provider' => ['@id' => $orgId],
+            'hasOfferCatalog' => [
+                '@type' => 'OfferCatalog',
+                'name' => $tariff['offer_catalog_name'],
+                'itemListElement' => $itemList,
+            ],
+        ];
+    }
+
     if (in_array('site-nav', $include, true)) {
         $hasPart = [
             ['@type' => 'WebPage', 'name' => 'Главная', 'url' => $siteUrl],

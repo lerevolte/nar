@@ -58,4 +58,16 @@ return [
             'narepite.site' => 'narepite.com',
         ],
     ],
+
+    'tariff' => [
+        'page_slug' => 'tarify',
+        'url_path' => '/tarify',
+        'name' => 'Тарифы на генерацию песен',
+        'service_type' => 'Генерация персональной песни',
+        'description' => 'Пакеты на создание песен через ИИ.',
+        'area_served' => 'RU',
+        'offer_catalog_name' => 'Пакеты песен',
+        'price_currency' => 'RUB',
+        'unit_text' => 'songs',
+    ],
 ];

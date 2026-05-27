@@ -146,10 +146,10 @@
                     'name' => $pkg['name'],
                     'description' => $pkg['name'] . ' за ' . $pkg['price'] . '₽',
                     'priceSpecification' => [
-                        '@type' => 'PriceSpecification',
+                        '@type' => 'UnitPriceSpecification',
                         'priceCurrency' => $tariff['price_currency'],
                         'price' => $pkg['price'],
-                        'valueReference' => [
+                        'referenceQuantity' => [
                             '@type' => 'QuantitativeValue',
                             'value' => (int) $songCount,
                             'unitText' => $tariff['unit_text'],

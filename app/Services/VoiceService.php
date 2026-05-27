@@ -12,7 +12,7 @@ class VoiceService
 
     public function __construct()
     {
-        $this->apiKey = '472ab240acbfc09784bd4d96d2630fbb';//config('services.suno.api_key');
+       $this->apiKey = config('services.kie.api_key');
     }
 
     private function headers(): array

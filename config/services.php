@@ -54,5 +54,7 @@ return [
     'yandex_metrica' => [
         'oauth_token' => env('YANDEX_METRICA_OAUTH_TOKEN'),
     ],
-
+    'kie' => [
+        'api_key' => env('KIE_API'),
+    ],
 ];

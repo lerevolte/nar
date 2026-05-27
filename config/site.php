@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'url' => env('APP_URL', 'https://narepite.com'),
+    'url' => env('SITE_URL', 'https://narepite.com'),
 
     'organization' => [
         'name' => 'На Репите',

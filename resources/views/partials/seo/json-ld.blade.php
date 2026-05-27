@@ -16,6 +16,9 @@
         if (str_starts_with($url, '/')) {
             return $siteUrl . $url;
         }
+        if (str_starts_with($url, 'http://')) {
+            $url = 'https://' . substr($url, 7);
+        }
         return $url;
     };
 

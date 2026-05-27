@@ -130,6 +130,66 @@
         }
     }
 
+    if (in_array('howto', $include, true) && !empty($article ?? null)) {
+        $html = $article->content_html ?? '';
+        $stepRegex = '/<(?:b|strong)>\s*(Шаг\s+\d+.*?)\s*<\/(?:b|strong)>/iu';
+
+        if (preg_match_all($stepRegex, $html, $matches, PREG_OFFSET_CAPTURE | PREG_PATTERN_ORDER)) {
+            $matchCount = count($matches[0]);
+
+            if ($matchCount >= 2) {
+                $steps = [];
+                for ($i = 0; $i < $matchCount; $i++) {
+                    $stepFull = $matches[0][$i][0];
+                    $stepHeading = trim(strip_tags($matches[1][$i][0]));
+                    $stepStart = $matches[0][$i][1];
+                    $stepEnd = $stepStart + strlen($stepFull);
+
+                    if ($i + 1 < $matchCount) {
+                        $nextStart = $matches[0][$i + 1][1];
+                        $blockHtml = substr($html, $stepEnd, $nextStart - $stepEnd);
+                    } else {
+                        $blockHtml = substr($html, $stepEnd);
+                    }
+
+                    $stepImage = null;
+                    if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $blockHtml, $imgMatch)) {
+                        $stepImage = $absUrl($imgMatch[1]);
+                    }
+
+                    $stepText = trim(strip_tags($blockHtml));
+
+                    $stepEntity = [
+                        '@type' => 'HowToStep',
+                        'name' => $stepHeading,
+                        'text' => $stepText,
+                    ];
+                    if ($stepImage) {
+                        $stepEntity['image'] = $stepImage;
+                    }
+                    $steps[] = $stepEntity;
+                }
+
+                $howTo = [
+                    '@type' => 'HowTo',
+                    'name' => $article->title,
+                    'description' => $article->final_seo_description,
+                    'step' => $steps,
+                    'tool' => [
+                        '@type' => 'HowToTool',
+                        'name' => 'Suno AI',
+                    ],
+                ];
+
+                if (!empty($article->reading_time) && (int) $article->reading_time > 0) {
+                    $howTo['totalTime'] = 'PT' . (int) $article->reading_time . 'M';
+                }
+
+                $graph[] = $howTo;
+            }
+        }
+    }
+
     if (in_array('blog-posting', $include, true) && !empty($article ?? null)) {
         $articleUrl = $siteUrl . '/articles/' . $article->slug;
 

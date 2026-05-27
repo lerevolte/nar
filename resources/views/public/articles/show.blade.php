@@ -38,8 +38,14 @@
 @endsection
 
 @section('jsonld')
+    @php
+        $articleIncludes = ['organization', 'breadcrumb', 'blog-posting'];
+        if (!empty($article->is_guide)) {
+            $articleIncludes[] = 'howto';
+        }
+    @endphp
     @include('partials.seo.json-ld', [
-        'include' => ['organization', 'breadcrumb', 'blog-posting'],
+        'include' => $articleIncludes,
         'breadcrumbs' => [
             ['name' => 'Главная', 'url' => url('/')],
             ['name' => 'Статьи', 'url' => route('public.articles.index')],

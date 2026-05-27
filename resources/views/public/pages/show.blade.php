@@ -2,6 +2,23 @@
 
 @section('title', $page->final_seo_title)
 
+@section('jsonld')
+    @php
+        $breadcrumbs = [['name' => 'Главная', 'url' => url('/')]];
+        if (($page->parent_id ?? null) && isset($rootPage)) {
+            $breadcrumbs[] = [
+                'name' => $rootPage->title,
+                'url' => route('public.pages.show', $rootPage->slug),
+            ];
+        }
+        $breadcrumbs[] = ['name' => $page->title];
+    @endphp
+    @include('partials.seo.json-ld', [
+        'include' => ['breadcrumb'],
+        'breadcrumbs' => $breadcrumbs,
+    ])
+@endsection
+
 @section('meta')
     <meta name="description" content="{{ $page->final_seo_description }}">
     @if($page->seo_keywords)

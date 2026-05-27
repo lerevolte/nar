@@ -37,6 +37,17 @@
 
 @endsection
 
+@section('jsonld')
+    @include('partials.seo.json-ld', [
+        'include' => ['breadcrumb'],
+        'breadcrumbs' => [
+            ['name' => 'Главная', 'url' => url('/')],
+            ['name' => 'Статьи', 'url' => route('public.articles.index')],
+            ['name' => $article->title],
+        ],
+    ])
+@endsection
+
 @section('content')
 <div class="max-w-7xl mx-auto px-4 md:px-8">
     <div class="article-page-wrap">
@@ -115,32 +126,6 @@
         @endif
     </div>
 </div>
-@php
-    $breadcrumbJson = [
-        '@context' => 'https://schema.org',
-        '@type' => 'BreadcrumbList',
-        'itemListElement' => [
-            [
-                '@type' => 'ListItem',
-                'position' => 1,
-                'name' => 'Главная',
-                'item' => url('/'),
-            ],
-            [
-                '@type' => 'ListItem',
-                'position' => 2,
-                'name' => 'Статьи',
-                'item' => route('public.articles.index'),
-            ],
-            [
-                '@type' => 'ListItem',
-                'position' => 3,
-                'name' => $article->title,
-            ],
-        ],
-    ];
-@endphp
-<script type="application/ld+json">{!! json_encode($breadcrumbJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
 @endsection
 
 @push('scripts')

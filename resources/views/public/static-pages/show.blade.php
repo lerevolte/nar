@@ -2,6 +2,16 @@
 
 @section('title', $page->final_seo_title)
 
+@section('jsonld')
+    @include('partials.seo.json-ld', [
+        'include' => ['breadcrumb'],
+        'breadcrumbs' => [
+            ['name' => 'Главная', 'url' => url('/')],
+            ['name' => $page->title],
+        ],
+    ])
+@endsection
+
 @section('meta')
     <meta name="description" content="{{ $page->final_seo_description }}">
     @if($page->seo_keywords)<meta name="keywords" content="{{ $page->seo_keywords }}">@endif

@@ -51,7 +51,7 @@ PriceSpecification: priceCurrency, price, valueReference"
 
 - [x] Organization + WebSite на главной
 - [x] WebApplication на главной и /create-song
-- [ ] BreadcrumbList глобально
+- [x] BreadcrumbList глобально
 - [ ] SiteNavigationElement глобально
 - [ ] Service + Offer на /tarify
 - [ ] WebPage + ContactPoint на /help

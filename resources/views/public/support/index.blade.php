@@ -2,6 +2,16 @@
 
 @section('title', 'Поддержка — НА РЕПИТЕ')
 
+@section('jsonld')
+    @include('partials.seo.json-ld', [
+        'include' => ['breadcrumb'],
+        'breadcrumbs' => [
+            ['name' => 'Главная', 'url' => url('/')],
+            ['name' => 'Поддержка'],
+        ],
+    ])
+@endsection
+
 @section('content')
 <div class="max-w-7xl mx-auto px-4 md:px-8 py-8">
     <nav class="breadcrumbs">

@@ -130,6 +130,29 @@
         }
     }
 
+    if (in_array('breadcrumb', $include, true) && !empty($breadcrumbs ?? null)) {
+        $crumbs = array_values($breadcrumbs);
+        $count = count($crumbs);
+        $elements = [];
+        foreach ($crumbs as $i => $crumb) {
+            $element = [
+                '@type' => 'ListItem',
+                'position' => $i + 1,
+                'name' => $crumb['name'],
+            ];
+            if ($i < $count - 1 && !empty($crumb['url'])) {
+                $element['item'] = $crumb['url'];
+            }
+            $elements[] = $element;
+        }
+        if (!empty($elements)) {
+            $graph[] = [
+                '@type' => 'BreadcrumbList',
+                'itemListElement' => $elements,
+            ];
+        }
+    }
+
     $jsonLd = [
         '@context' => 'https://schema.org',
         '@graph' => $graph,

@@ -4,6 +4,15 @@
 @section('meta')
     <meta name="description" content="Полезные статьи о генерации песен с помощью ИИ: промпты для создания музыки, инструкции по работе с нейросетью, обзоры аналогов Suno. Учитесь создавать хиты!">
 @endsection
+@section('jsonld')
+    @include('partials.seo.json-ld', [
+        'include' => ['breadcrumb'],
+        'breadcrumbs' => [
+            ['name' => 'Главная', 'url' => url('/')],
+            ['name' => 'Статьи'],
+        ],
+    ])
+@endsection
 @section('content')
 <div class="max-w-7xl mx-auto px-4 md:px-8">
     <div class="articles-page">
@@ -96,24 +105,4 @@
         @endif
     </div>
 </div>
-@php
-    $breadcrumbJson = [
-        '@context' => 'https://schema.org',
-        '@type' => 'BreadcrumbList',
-        'itemListElement' => [
-            [
-                '@type' => 'ListItem',
-                'position' => 1,
-                'name' => 'Главная',
-                'item' => url('/'),
-            ],
-            [
-                '@type' => 'ListItem',
-                'position' => 2,
-                'name' => 'Статьи'
-            ]
-        ],
-    ];
-@endphp
-<script type="application/ld+json">{!! json_encode($breadcrumbJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
 @endsection

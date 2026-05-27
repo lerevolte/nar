@@ -6,7 +6,8 @@
 @endsection
 @section('jsonld')
     @include('partials.seo.json-ld', [
-        'include' => ['breadcrumb'],
+        'include' => ['breadcrumb', 'articles-list'],
+        'articles' => $articles,
         'breadcrumbs' => [
             ['name' => 'Главная', 'url' => url('/')],
             ['name' => 'Статьи'],

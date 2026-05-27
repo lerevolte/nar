@@ -356,6 +356,53 @@
         ];
     }
 
+    if (in_array('articles-list', $include, true) && !empty($articles ?? null)) {
+        $elements = [];
+        $position = 1;
+        foreach ($articles as $a) {
+            $articleUrl = $siteUrl . '/articles/' . $a->slug;
+
+            $imageUrl = null;
+            foreach (['og_image', 'cover_thumb_url', 'cover_url', 'banner_url'] as $field) {
+                if (!empty($a->{$field})) {
+                    $imageUrl = $absUrl($a->{$field});
+                    break;
+                }
+            }
+
+            $blogPosting = [
+                '@type' => 'BlogPosting',
+                'headline' => $a->title,
+                'url' => $articleUrl,
+                'description' => $a->final_seo_description,
+            ];
+
+            if ($imageUrl) {
+                $blogPosting['image'] = $imageUrl;
+            }
+
+            $datePublished = $a->published_at ?? $a->created_at;
+            if ($datePublished) {
+                $blogPosting['datePublished'] = $datePublished->toIso8601String();
+            }
+
+            $elements[] = [
+                '@type' => 'ListItem',
+                'position' => $position++,
+                'item' => $blogPosting,
+            ];
+        }
+
+        if (!empty($elements)) {
+            $graph[] = [
+                '@type' => 'ItemList',
+                'itemListOrder' => 'https://schema.org/ItemListOrderDescending',
+                'numberOfItems' => count($elements),
+                'itemListElement' => $elements,
+            ];
+        }
+    }
+
     if (in_array('breadcrumb', $include, true) && !empty($breadcrumbs ?? null)) {
         $crumbs = array_values($breadcrumbs);
         $count = count($crumbs);

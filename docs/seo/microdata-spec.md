@@ -57,7 +57,8 @@ PriceSpecification: priceCurrency, price, valueReference"
 - [x] WebPage + ContactPoint на /help
 - [x] BlogPosting для обычных статей
 - [x] BlogPosting + HowTo для гайдов
-- [ ] ItemList + BlogPosting на /articles + "Читайте также"
+- [x] ItemList + BlogPosting на /articles
+- [ ] ItemList "Читайте также" в конце статьи
 - [ ] Service + MusicComposition + FAQPage для /pages/povod-dlya-pesni/
 - [x] ItemList + MusicComposition "Лучшие песни"
 

@@ -7,6 +7,9 @@
     <meta property="og:title" content="Создай песню за 2 минуты">
     <meta property="og:description" content="ИИ создаст уникальную песню под твой повод. Любой стиль. ">
 @endsection
+@section('jsonld')
+    @include('partials.seo.json-ld', ['include' => ['organization', 'webapp', 'best-songs']])
+@endsection
 
 @push('styles')
 <style>

@@ -5,7 +5,7 @@
     <meta name="description" content="Сайт для создания песен: нейросеть запишет музыку высокого качества, ИИ создаст текст и вокал по вашим словам. Полностью на русском языке. Создайте свой трек всего за 3 шага!">
 @endsection
 @section('jsonld')
-    @include('partials.seo.organization-website')
+    @include('partials.seo.json-ld', ['include' => ['organization', 'website', 'webapp', 'best-songs']])
 @endsection
 @section('content')
     <main>

@@ -49,8 +49,8 @@ PriceSpecification: priceCurrency, price, valueReference"
 
 ## Прогресс реализации
 
-- [ ] Organization + WebSite на главной
-- [ ] WebApplication на главной и /create-song
+- [x] Organization + WebSite на главной
+- [x] WebApplication на главной и /create-song
 - [ ] BreadcrumbList глобально
 - [ ] SiteNavigationElement глобально
 - [ ] Service + Offer на /tarify
@@ -59,7 +59,7 @@ PriceSpecification: priceCurrency, price, valueReference"
 - [ ] BlogPosting + HowTo для гайдов
 - [ ] ItemList + BlogPosting на /articles + "Читайте также"
 - [ ] Service + MusicComposition + FAQPage для /pages/povod-dlya-pesni/
-- [ ] ItemList + MusicComposition "Лучшие песни"
+- [x] ItemList + MusicComposition "Лучшие песни"
 
 ## Общие правила
 

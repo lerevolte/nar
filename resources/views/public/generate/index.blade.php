@@ -2664,17 +2664,25 @@
         document.getElementById('pgv-rec-status-verify').textContent = 'Зачитай фразу выше';
     }
 
-    // --- Шаг 1 → запрос фразы ---
-    async function pgvSubmitSource() {
-        if (!pgv.sourceUrl) { pgvShowError('Сначала запиши или загрузи аудио'); return; }
+    // --- Запрос НОВОЙ фразы по исходному аудио ---
+    // Каждый вызов создаёт свежий validate-таск (старый taskId после провала
+    // верификации больше не валиден — Kie вернёт "Validate record is not in valid status")
+    async function pgvRequestPhrase() {
+        if (!pgv.sourceUrl) { pgvShowError('Сначала запиши или загрузи аудио'); pgvSetStep('source'); return false; }
         pgvHideError();
 
         const start = parseInt(document.getElementById('pgv-vocal-start').value, 10) || 0;
         const end = parseInt(document.getElementById('pgv-vocal-end').value, 10) || 20;
-        if (end <= start) { pgvShowError('Конец фрагмента должен быть позже начала'); return; }
+        if (end <= start) { pgvShowError('Конец фрагмента должен быть позже начала'); pgvSetStep('source'); return false; }
 
-        const btn = document.getElementById('pgv-source-next');
-        btn.disabled = true; btn.textContent = 'Обрабатываем...';
+        // Сбрасываем прошлый taskId, запись чтения и UI фразы
+        pgv.taskId = null;
+        pgvClearVerify();
+        const phraseEl = document.getElementById('pgv-phrase-text');
+        document.getElementById('pgv-rec-btn-verify').disabled = true;
+        phraseEl.innerHTML = '<span class="pgv-spinner"></span> Готовим фразу...';
+        document.getElementById('pgv-rec-status-verify').textContent = 'Дождись фразы';
+        pgvSetStep('phrase');
 
         try {
             const r = await fetch('/api/public-generate/voice/create', {
@@ -2691,13 +2699,21 @@
             if (!r.ok || !d.success) throw new Error(d.error || 'Ошибка');
 
             pgv.taskId = d.task_id;
-            pgvSetStep('phrase');
             pgvPollPhrase();
+            return true;
         } catch (e) {
             pgvShowError(e.message);
-        } finally {
-            btn.disabled = false; btn.textContent = 'Далее →';
+            pgvSetStep('source');
+            return false;
         }
+    }
+
+    // --- Шаг 1 → запрос фразы ---
+    async function pgvSubmitSource() {
+        const btn = document.getElementById('pgv-source-next');
+        btn.disabled = true; btn.textContent = 'Обрабатываем...';
+        await pgvRequestPhrase();
+        btn.disabled = false; btn.textContent = 'Далее →';
     }
 
     // --- Поллинг контрольной фразы ---
@@ -2756,8 +2772,10 @@
             pgvSetStep('generating');
             pgvPollStatus();
         } catch (e) {
-            pgvShowError(e.message);
             btn.disabled = false; btn.textContent = 'Создать голос →';
+            // taskId после неудачной верификации невалиден — берём свежую фразу
+            pgvShowError('Не получилось. Запрашиваем новую фразу — прочитай её заново, чётко.');
+            pgvRequestPhrase();
         }
     }
 
@@ -2768,8 +2786,8 @@
             attempts++;
             if (attempts > 60) { // ~3 мин
                 clearInterval(pgv.statusPoll);
-                pgvShowError('Голос создаётся дольше обычного. Попробуй позже.');
-                pgvSetStep('phrase');
+                pgvShowError('Голос создаётся дольше обычного. Запрашиваем новую фразу — попробуй ещё раз.');
+                pgvRequestPhrase();
                 return;
             }
             try {
@@ -2783,10 +2801,10 @@
                     pgvClose();
                 } else if (d.status === 'failed') {
                     clearInterval(pgv.statusPoll);
-                    // Чаще всего фраза прочитана неразборчиво — даём переписать
-                    pgvShowError('Не удалось распознать голос по фразе. Перечитай фразу чётче и запиши ещё раз.');
-                    pgvClearVerify();
-                    pgvSetStep('phrase');
+                    // Чаще всего фраза прочитана неразборчиво. Старый taskId уже невалиден —
+                    // запрашиваем НОВУЮ фразу, иначе Kie вернёт "Validate record is not in valid status".
+                    pgvShowError('Не удалось распознать голос по фразе. Запрашиваем новую фразу — перечитай её чётче.');
+                    pgvRequestPhrase();
                 }
             } catch (e) { /* продолжаем поллинг */ }
         }, 3000);

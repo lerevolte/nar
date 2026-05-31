@@ -962,7 +962,7 @@ class PublicGenerateController extends Controller
         RateLimiter::hit($key, 3600);
 
         $request->validate([
-            'audio' => 'required|file|max:20480|mimes:mp3,wav,m4a,ogg,webm',
+            'audio' => 'required|file|max:20480|mimes:mp3,wav,m4a,mp4,ogg,webm',
         ]);
 
         $file = $request->file('audio');

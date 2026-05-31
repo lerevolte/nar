@@ -2530,7 +2530,7 @@
         }
 
         // Старт
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
             pgvShowError('Браузер не поддерживает запись с микрофона — загрузи файл.');
             return;
         }
@@ -2542,15 +2542,38 @@
             return;
         }
 
+        // Выбираем mime, который реально поддерживает браузер (Chrome→webm, Safari→mp4)
+        const mimeCandidates = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/mpeg'];
+        let chosenMime = '';
+        if (typeof MediaRecorder.isTypeSupported === 'function') {
+            chosenMime = mimeCandidates.find(m => MediaRecorder.isTypeSupported(m)) || '';
+        }
+
         pgv.chunks = [];
         pgv.recordingTarget = target;
-        pgv.recorder = new MediaRecorder(pgv.stream);
+        try {
+            pgv.recorder = chosenMime
+                ? new MediaRecorder(pgv.stream, { mimeType: chosenMime })
+                : new MediaRecorder(pgv.stream);
+        } catch (e) {
+            pgv.recorder = new MediaRecorder(pgv.stream);
+        }
         pgv.recorder.ondataavailable = e => { if (e.data.size > 0) pgv.chunks.push(e.data); };
         pgv.recorder.onstop = () => {
-            const blob = new Blob(pgv.chunks, { type: 'audio/webm' });
-            pgv.stream.getTracks().forEach(t => t.stop());
-            pgv.stream = null;
-            pgvHandleAudio(blob, target, 'voice.webm');
+            try {
+                // Реальный mime берём у рекордера (без параметров после ';')
+                const recMime = (pgv.recorder.mimeType || chosenMime || 'audio/webm').split(';')[0];
+                const blob = new Blob(pgv.chunks, { type: recMime });
+                if (pgv.stream) {
+                    pgv.stream.getTracks().forEach(t => t.stop());
+                    pgv.stream = null;
+                }
+                const extMap = { 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3' };
+                const ext = extMap[recMime] || 'webm';
+                pgvHandleAudio(blob, target, 'voice.' + ext);
+            } catch (err) {
+                pgvShowError('Не удалось обработать запись: ' + err.message);
+            }
         };
         pgv.recorder.start();
         btn.classList.add('recording');
@@ -2592,9 +2615,14 @@
         statusEl.textContent = 'Загружаем...';
 
         const fd = new FormData();
-        const ext = (filename.split('.').pop() || 'webm').toLowerCase();
-        const safeExt = ['mp3', 'wav', 'm4a', 'ogg', 'webm'].includes(ext) ? ext : 'webm';
-        fd.append('audio', blobOrFile, 'voice.' + safeExt);
+        const allowed = ['mp3', 'wav', 'm4a', 'mp4', 'ogg', 'webm'];
+        let ext = (filename.split('.').pop() || '').toLowerCase();
+        if (!allowed.includes(ext)) {
+            // запасной вариант — из mime-типа blob/файла
+            const mimeExt = { 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav' };
+            ext = mimeExt[(blobOrFile.type || '').split(';')[0]] || 'webm';
+        }
+        fd.append('audio', blobOrFile, 'voice.' + ext);
 
         try {
             const r = await fetch('/api/public-generate/voice/upload', {

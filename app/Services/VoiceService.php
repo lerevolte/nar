@@ -87,7 +87,8 @@ class VoiceService
                 }
             }
 
-            if (in_array($status, ['FAILED', 'ERROR'])) {
+            $lc = strtolower($status);
+            if (str_contains($lc, 'fail') || str_contains($lc, 'error')) {
                 return ['status' => 'failed', 'error' => $taskData['errorMessage'] ?? 'Ошибка'];
             }
 
@@ -163,7 +164,9 @@ class VoiceService
                 ];
             }
 
-            if (in_array(strtolower($status), ['failed', 'error'])) {
+            // Kie отдаёт разные варианты провала: 'fail', 'failed', 'error'
+            $lc = strtolower($status);
+            if (str_contains($lc, 'fail') || str_contains($lc, 'error')) {
                 return ['status' => 'failed', 'error' => $taskData['errorMessage'] ?? 'Ошибка'];
             }
 

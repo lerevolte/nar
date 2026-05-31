@@ -2783,7 +2783,9 @@
                     pgvClose();
                 } else if (d.status === 'failed') {
                     clearInterval(pgv.statusPoll);
-                    pgvShowError(d.error || 'Не удалось создать голос');
+                    // Чаще всего фраза прочитана неразборчиво — даём переписать
+                    pgvShowError('Не удалось распознать голос по фразе. Перечитай фразу чётче и запиши ещё раз.');
+                    pgvClearVerify();
                     pgvSetStep('phrase');
                 }
             } catch (e) { /* продолжаем поллинг */ }

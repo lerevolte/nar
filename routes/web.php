@@ -35,6 +35,13 @@ Route::middleware('telegram.auth.optional')->group(function () {
 
     Route::post('/api/public-generate/create-free', [App\Http\Controllers\PublicGenerateController::class, 'createFreeOrder']);
 
+    // «Свой голос» (гостевой, разовый) — обёртки над Kie VoiceService, без авторизации
+    Route::post('/api/public-generate/voice/upload', [App\Http\Controllers\PublicGenerateController::class, 'voiceUpload']);
+    Route::post('/api/public-generate/voice/create', [App\Http\Controllers\PublicGenerateController::class, 'voiceCreate']);
+    Route::get('/api/public-generate/voice/phrase', [App\Http\Controllers\PublicGenerateController::class, 'voicePhrase']);
+    Route::post('/api/public-generate/voice/generate', [App\Http\Controllers\PublicGenerateController::class, 'voiceGenerate']);
+    Route::get('/api/public-generate/voice/status', [App\Http\Controllers\PublicGenerateController::class, 'voiceStatus']);
+
     Route::get('/support', [\App\Http\Controllers\SupportController::class, 'index'])->name('support.index');
     Route::post('/support/upload', [\App\Http\Controllers\SupportController::class, 'upload'])->name('support.upload');
     Route::post('/support/send', [\App\Http\Controllers\SupportController::class, 'send'])->name('support.send');

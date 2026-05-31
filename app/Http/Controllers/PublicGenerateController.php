@@ -7,6 +7,7 @@ use App\Models\GuestOrder;
 use App\Services\LyricsGeneratorService;
 use App\Services\YooKassaService;
 use App\Services\GuestOrderService;
+use App\Services\VoiceService;
 use App\Models\Song;
 use App\Models\ChartEntry;
 use App\Models\ChartVote;
@@ -291,6 +292,7 @@ class PublicGenerateController extends Controller
             'genre'         => 'required|string|max:255',
             'artist'        => 'nullable|string|max:255',
             'vocal_gender'  => 'sometimes|nullable|string|in:m,f,duet,random',
+            'voice_id'      => 'nullable|string|max:255',
             'language'      => 'required|string|in:ru,en,de,es,fr,it',
             'occasion'      => 'nullable|string|max:500',
             'description'   => 'nullable|string|max:10000',
@@ -335,6 +337,7 @@ class PublicGenerateController extends Controller
             'genre'         => $request->input('genre'),
             'artist'        => $request->input('artist'),
             'vocal_gender'  => $request->input('vocal_gender', 'random'),
+            'voice_id'      => $request->input('voice_id'),
             'language'      => $request->input('language', 'ru'),
             'occasion'      => $request->input('occasion'),
             'description'   => $request->input('description'),
@@ -854,6 +857,7 @@ class PublicGenerateController extends Controller
             'genre'         => 'required|string|max:255',
             'artist'        => 'nullable|string|max:255',
             'vocal_gender'  => 'sometimes|nullable|string|in:m,f,duet,random',
+            'voice_id'      => 'nullable|string|max:255',
             'language'      => 'required|string|in:ru,en,de,es,fr,it',
             'occasion'      => 'nullable|string|max:500',
             'description'   => 'nullable|string|max:10000',
@@ -875,6 +879,7 @@ class PublicGenerateController extends Controller
             'genre'         => $request->input('genre'),
             'artist'        => $request->input('artist'),
             'vocal_gender'  => $request->input('vocal_gender', 'random'),
+            'voice_id'      => $request->input('voice_id'),
             'language'      => $request->input('language', 'ru'),
             'occasion'      => $request->input('occasion'),
             'description'   => $request->input('description'),
@@ -938,5 +943,144 @@ class PublicGenerateController extends Controller
             'lyrics' => $lyrics,
             'title' => $title,
         ]);
+    }
+
+    // ==========================================
+    // «СВОЙ ГОЛОС» (гостевой, разовый, без авторизации)
+    // Стейтлесс: taskId/voiceId держит клиент, в БД пишем только итог в guest_orders.voice_id
+    // ==========================================
+
+    /**
+     * Загрузка исходного / verify аудио гостем → публичный URL для Kie
+     */
+    public function voiceUpload(Request $request)
+    {
+        $key = 'public-voice-upload:' . $request->ip();
+        if (RateLimiter::tooManyAttempts($key, 20)) {
+            return response()->json(['error' => 'Слишком много загрузок. Попробуй позже.'], 429);
+        }
+        RateLimiter::hit($key, 3600);
+
+        $request->validate([
+            'audio' => 'required|file|max:20480|mimes:mp3,wav,m4a,ogg,webm',
+        ]);
+
+        $file = $request->file('audio');
+        $dir = public_path('uploads/voices');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $name = time() . '-' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $file->move($dir, $name);
+
+        $url = 'https://narepite.site/uploads/voices/' . $name;
+
+        return response()->json(['success' => true, 'url' => $url]);
+    }
+
+    /**
+     * Шаг 1: запрос verify-фразы по исходному аудио → Kie taskId
+     */
+    public function voiceCreate(Request $request, VoiceService $voiceService)
+    {
+        $key = 'public-voice-create:' . $request->ip();
+        if (RateLimiter::tooManyAttempts($key, 10)) {
+            return response()->json(['error' => 'Слишком много попыток. Попробуй через час.'], 429);
+        }
+        RateLimiter::hit($key, 3600);
+
+        $request->validate([
+            'source_audio_url' => 'required|string|url|max:500',
+            'vocal_start'      => 'required|integer|min:0',
+            'vocal_end'        => 'required|integer|min:1',
+            'language'         => 'nullable|string|max:5',
+        ]);
+
+        $result = $voiceService->requestVerifyPhrase(
+            $request->input('source_audio_url'),
+            $request->input('vocal_start'),
+            $request->input('vocal_end'),
+            $request->input('language', 'ru')
+        );
+
+        if (!$result['success']) {
+            return response()->json(['error' => $result['error'] ?? 'Ошибка'], 400);
+        }
+
+        return response()->json(['success' => true, 'task_id' => $result['task_id']]);
+    }
+
+    /**
+     * Поллинг: статус verify-фразы по taskId
+     */
+    public function voicePhrase(Request $request, VoiceService $voiceService)
+    {
+        $taskId = $request->query('task_id');
+        if (!$taskId) {
+            return response()->json(['error' => 'No task_id'], 400);
+        }
+
+        $result = $voiceService->getValidateInfo($taskId);
+
+        if ($result['status'] === 'ready') {
+            return response()->json(['status' => 'ready', 'verify_phrase' => $result['verify_phrase']]);
+        }
+        if ($result['status'] === 'failed') {
+            return response()->json(['status' => 'failed', 'error' => $result['error'] ?? 'Ошибка']);
+        }
+
+        return response()->json(['status' => 'processing']);
+    }
+
+    /**
+     * Шаг 2: отправка verify-аудио → запуск генерации голоса (Kie generate taskId)
+     */
+    public function voiceGenerate(Request $request, VoiceService $voiceService)
+    {
+        $key = 'public-voice-generate:' . $request->ip();
+        if (RateLimiter::tooManyAttempts($key, 10)) {
+            return response()->json(['error' => 'Слишком много попыток. Попробуй через час.'], 429);
+        }
+        RateLimiter::hit($key, 3600);
+
+        $request->validate([
+            'task_id'           => 'required|string|max:255',
+            'verify_audio_url'  => 'required|string|url|max:500',
+        ]);
+
+        $result = $voiceService->generateVoice(
+            $request->input('task_id'),
+            $request->input('verify_audio_url'),
+            'Мой голос'
+        );
+
+        if (!$result['success']) {
+            return response()->json(['error' => $result['error'] ?? 'Ошибка'], 400);
+        }
+
+        return response()->json(['success' => true, 'task_id' => $result['task_id']]);
+    }
+
+    /**
+     * Поллинг: статус генерации голоса по taskId → итоговый Kie voice_id
+     */
+    public function voiceStatus(Request $request, VoiceService $voiceService)
+    {
+        $taskId = $request->query('task_id');
+        if (!$taskId) {
+            return response()->json(['error' => 'No task_id'], 400);
+        }
+
+        $result = $voiceService->getRecordInfo($taskId);
+
+        if ($result['status'] === 'ready' && !empty($result['voice_id'])) {
+            return response()->json(['status' => 'ready', 'voice_id' => $result['voice_id']]);
+        }
+        if ($result['status'] === 'failed') {
+            return response()->json(['status' => 'failed', 'error' => $result['error'] ?? 'Ошибка']);
+        }
+
+        return response()->json(['status' => 'processing']);
     }
 }

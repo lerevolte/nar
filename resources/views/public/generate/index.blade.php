@@ -1227,6 +1227,22 @@
             </button>
         </div>
         <div class="pg-duet-warn" id="duet-warn">⚠️ В дуэтах голоса иногда могут смешиваться — модель не всегда идеально распределяет партии.</div>
+
+        <div class="pgv-cta">
+            <div class="pgv-cta-text">
+                <strong>🎤 Хочешь, чтобы пела песню твоим голосом?</strong><br>
+                Запиши или загрузи короткий фрагмент — и ИИ споёт твоим тембром.
+            </div>
+            <button type="button" class="pg-btn pg-btn-primary" onclick="pgvOpen()">🎙 Записать свой голос</button>
+            <div class="pgv-connected" id="pgv-connected" style="display:none;">
+                ✅ Голос подключён
+                <button type="button" onclick="pgvReset()">убрать</button>
+            </div>
+        </div>
+
+        <div class="pg-btn-row">
+            <button type="button" class="pg-btn pg-btn-primary" onclick="pgGoTo('description')">Далее →</button>
+        </div>
     </div>
 
     {{-- ШАГ 6: Описание --}}
@@ -1683,6 +1699,98 @@
         </div>
     @endif
 </section>
+
+{{-- ============ МОДАЛКА «СВОЙ ГОЛОС» ============ --}}
+<div class="pgv-modal" id="pgv-modal">
+    <div class="pgv-modal-card">
+        <div class="pgv-modal-head">
+            <h3>🎤 Твой голос</h3>
+            <button type="button" class="pgv-close" onclick="pgvClose()">×</button>
+        </div>
+
+        <div class="pgv-progress">
+            <div class="pgv-progress-step" id="pgv-prog-1"></div>
+            <div class="pgv-progress-step" id="pgv-prog-2"></div>
+            <div class="pgv-progress-step" id="pgv-prog-3"></div>
+        </div>
+
+        <div class="pgv-info">
+            Запиши <strong>20–60 секунд</strong> своего пения или речи. Дальше система попросит зачитать
+            контрольную фразу — это нужно, чтобы подтвердить, что голос твой.
+        </div>
+
+        {{-- ШАГ 1: исходное аудио (запись или загрузка) --}}
+        <div class="pgv-step active" id="pgv-step-source">
+            <label class="pgv-label">Запиши голос</label>
+            <div class="pgv-record-controls">
+                <button type="button" class="pgv-record-btn rec" id="pgv-rec-btn" onclick="pgvToggleRecord('source')">🎙</button>
+            </div>
+            <div class="pgv-status" id="pgv-rec-status">Нажми, чтобы начать запись</div>
+
+            <div class="pgv-or">или</div>
+
+            <div class="pgv-upload" id="pgv-upload-source" onclick="document.getElementById('pgv-file-source').click()">
+                <div class="pgv-upload-text">📁 Загрузить аудиофайл</div>
+                <div class="pgv-upload-hint">mp3, wav, m4a, ogg · до 20 МБ</div>
+            </div>
+            <input type="file" id="pgv-file-source" accept="audio/*" style="display:none;">
+
+            <div class="pgv-file" id="pgv-file-preview-source" style="display:none;">
+                <audio id="pgv-audio-source" controls></audio>
+                <button type="button" class="pgv-file-remove" onclick="pgvClearSource()">✕</button>
+            </div>
+
+            <div class="pgv-time">
+                <label>Вокал с (сек):</label>
+                <input type="number" id="pgv-vocal-start" value="0" min="0">
+                <label>по (сек):</label>
+                <input type="number" id="pgv-vocal-end" value="20" min="1">
+            </div>
+
+            <button type="button" class="pg-btn pg-btn-primary" style="margin-top:16px; width:100%;"
+                    id="pgv-source-next" onclick="pgvSubmitSource()" disabled>Далее →</button>
+        </div>
+
+        {{-- ШАГ 2: чтение контрольной фразы --}}
+        <div class="pgv-step" id="pgv-step-phrase">
+            <label class="pgv-label">Зачитай эту фразу вслух и запиши:</label>
+            <div class="pgv-phrase" id="pgv-phrase-text">
+                <span class="pgv-spinner"></span> Готовим фразу...
+            </div>
+
+            <div class="pgv-record-controls">
+                <button type="button" class="pgv-record-btn rec" id="pgv-rec-btn-verify" onclick="pgvToggleRecord('verify')" disabled>🎙</button>
+            </div>
+            <div class="pgv-status" id="pgv-rec-status-verify">Дождись фразы</div>
+
+            <div class="pgv-or">или</div>
+
+            <div class="pgv-upload" id="pgv-upload-verify" onclick="document.getElementById('pgv-file-verify').click()">
+                <div class="pgv-upload-text">📁 Загрузить запись фразы</div>
+                <div class="pgv-upload-hint">mp3, wav, m4a, ogg · до 20 МБ</div>
+            </div>
+            <input type="file" id="pgv-file-verify" accept="audio/*" style="display:none;">
+
+            <div class="pgv-file" id="pgv-file-preview-verify" style="display:none;">
+                <audio id="pgv-audio-verify" controls></audio>
+                <button type="button" class="pgv-file-remove" onclick="pgvClearVerify()">✕</button>
+            </div>
+
+            <button type="button" class="pg-btn pg-btn-primary" style="margin-top:16px; width:100%;"
+                    id="pgv-verify-next" onclick="pgvSubmitVerify()" disabled>Создать голос →</button>
+        </div>
+
+        {{-- ШАГ 3: генерация голоса --}}
+        <div class="pgv-step" id="pgv-step-generating">
+            <div style="text-align:center; padding:24px 0;">
+                <div class="pgv-spinner" style="width:32px; height:32px; border-width:3px;"></div>
+                <div class="pgv-status" id="pgv-gen-status" style="margin-top:16px; font-size:15px;">Создаём твой голос... Это может занять 1–3 минуты.</div>
+            </div>
+        </div>
+
+        <div class="pg-error" id="pgv-error" style="margin-top:12px;"></div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -1774,6 +1882,7 @@
         title: '',
         lyrics: '',
         mode: 'idea', // 'idea' | 'own'
+        voiceId: null, // итоговый Kie voice_id «своего голоса» (опционально)
     };
 
     function pgSetMode(mode) {
@@ -2011,7 +2120,7 @@
             pgData.vocalGender = this.dataset.value;
             document.getElementById('duet-warn').style.display = this.dataset.value === 'duet' ? 'block' : 'none';
             pgReachGoal('step-voice');
-            setTimeout(() => pgGoTo('description'), 300);
+            // Авто-переход убран: ниже есть CTA «свой голос» + кнопка «Далее»
         });
     });
 
@@ -2239,7 +2348,8 @@
         document.getElementById('summary-genre').textContent = pgData.genre || '—';
 
         const voiceLabels = { m: '👨 Мужской', f: '👩 Женский', duet: '👫 Дуэт', random: '🎲 Случайный' };
-        document.getElementById('summary-voice').textContent = voiceLabels[pgData.vocalGender] || '—';
+        const voiceText = pgData.voiceId ? '🎤 Твой голос' : (voiceLabels[pgData.vocalGender] || '—');
+        document.getElementById('summary-voice').textContent = voiceText;
 
         const langLabels = { ru: '🇷🇺 Русский', en: '🇬🇧 English', de: '🇩🇪 Deutsch', es: '🇪🇸 Español', fr: '🇫🇷 Français', it: '🇮🇹 Italiano' };
         document.getElementById('summary-language').textContent = langLabels[pgData.language] || pgData.language;
@@ -2276,6 +2386,7 @@
                     genre: pgData.genre,
                     artist: pgData.artist,
                     vocal_gender: pgData.vocalGender,
+                    voice_id: pgData.voiceId,
                     language: pgData.language,
                     occasion: pgData.occasion,
                     description: pgData.description,
@@ -2318,6 +2429,7 @@
                     genre: pgData.genre,
                     artist: pgData.artist,
                     vocal_gender: pgData.vocalGender,
+                    voice_id: pgData.voiceId,
                     language: pgData.language,
                     occasion: pgData.occasion,
                     description: pgData.description,
@@ -2334,6 +2446,320 @@
             btn.disabled = false;
             btn.innerHTML = original;
         }
+    }
+
+    // ============ «СВОЙ ГОЛОС» (рекордер) ============
+    const pgv = {
+        sourceUrl: null,       // URL исходного аудио на сервере
+        verifyUrl: null,       // URL записи контрольной фразы
+        taskId: null,          // Kie validate taskId
+        genTaskId: null,       // Kie generate taskId
+        recorder: null,        // MediaRecorder
+        chunks: [],
+        stream: null,
+        recordingTarget: null, // 'source' | 'verify'
+        phrasePoll: null,
+        statusPoll: null,
+    };
+
+    function pgvShowError(msg) {
+        const el = document.getElementById('pgv-error');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+    function pgvHideError() {
+        document.getElementById('pgv-error').style.display = 'none';
+    }
+
+    function pgvSetStep(step) {
+        document.querySelectorAll('#pgv-modal .pgv-step').forEach(el => el.classList.remove('active'));
+        document.getElementById('pgv-step-' + step).classList.add('active');
+        const map = { source: 1, phrase: 2, generating: 3 };
+        const cur = map[step];
+        [1, 2, 3].forEach(i => {
+            const el = document.getElementById('pgv-prog-' + i);
+            el.classList.remove('done', 'current');
+            if (i < cur) el.classList.add('done');
+            else if (i === cur) el.classList.add('current');
+        });
+    }
+
+    function pgvOpen() {
+        pgReachGoal('voice-open');
+        pgvHideError();
+        pgvSetStep('source');
+        document.getElementById('pgv-modal').classList.add('active');
+    }
+    function pgvClose() {
+        pgvStopStream();
+        if (pgv.phrasePoll) { clearInterval(pgv.phrasePoll); pgv.phrasePoll = null; }
+        if (pgv.statusPoll) { clearInterval(pgv.statusPoll); pgv.statusPoll = null; }
+        document.getElementById('pgv-modal').classList.remove('active');
+    }
+    function pgvReset() {
+        pgData.voiceId = null;
+        pgv.sourceUrl = pgv.verifyUrl = pgv.taskId = pgv.genTaskId = null;
+        document.getElementById('pgv-connected').style.display = 'none';
+    }
+
+    function pgvStopStream() {
+        if (pgv.recorder && pgv.recorder.state === 'recording') {
+            try { pgv.recorder.stop(); } catch (e) {}
+        }
+        if (pgv.stream) {
+            pgv.stream.getTracks().forEach(t => t.stop());
+            pgv.stream = null;
+        }
+    }
+
+    // --- Запись с микрофона ---
+    async function pgvToggleRecord(target) {
+        const btn = target === 'source'
+            ? document.getElementById('pgv-rec-btn')
+            : document.getElementById('pgv-rec-btn-verify');
+        const statusEl = target === 'source'
+            ? document.getElementById('pgv-rec-status')
+            : document.getElementById('pgv-rec-status-verify');
+
+        // Остановка
+        if (pgv.recorder && pgv.recorder.state === 'recording') {
+            pgv.recorder.stop();
+            btn.classList.remove('recording');
+            statusEl.textContent = 'Обрабатываем запись...';
+            return;
+        }
+
+        // Старт
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            pgvShowError('Браузер не поддерживает запись с микрофона — загрузи файл.');
+            return;
+        }
+
+        try {
+            pgv.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (e) {
+            pgvShowError('Нет доступа к микрофону. Разреши доступ или загрузи файл.');
+            return;
+        }
+
+        pgv.chunks = [];
+        pgv.recordingTarget = target;
+        pgv.recorder = new MediaRecorder(pgv.stream);
+        pgv.recorder.ondataavailable = e => { if (e.data.size > 0) pgv.chunks.push(e.data); };
+        pgv.recorder.onstop = () => {
+            const blob = new Blob(pgv.chunks, { type: 'audio/webm' });
+            pgv.stream.getTracks().forEach(t => t.stop());
+            pgv.stream = null;
+            pgvHandleAudio(blob, target, 'voice.webm');
+        };
+        pgv.recorder.start();
+        btn.classList.add('recording');
+        statusEl.textContent = '● Идёт запись... нажми, чтобы остановить';
+    }
+
+    // --- Загрузка файла ---
+    document.getElementById('pgv-file-source').addEventListener('change', function () {
+        if (this.files[0]) pgvHandleAudio(this.files[0], 'source', this.files[0].name);
+    });
+    document.getElementById('pgv-file-verify').addEventListener('change', function () {
+        if (this.files[0]) pgvHandleAudio(this.files[0], 'verify', this.files[0].name);
+    });
+
+    // Drag-drop
+    ['source', 'verify'].forEach(target => {
+        const zone = document.getElementById('pgv-upload-' + target);
+        if (!zone) return;
+        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) pgvHandleAudio(e.dataTransfer.files[0], target, e.dataTransfer.files[0].name);
+        });
+    });
+
+    // --- Загрузка аудио на сервер ---
+    async function pgvHandleAudio(blobOrFile, target, filename) {
+        pgvHideError();
+        const previewEl = document.getElementById('pgv-file-preview-' + target);
+        const audioEl = document.getElementById('pgv-audio-' + target);
+        const statusEl = target === 'source'
+            ? document.getElementById('pgv-rec-status')
+            : document.getElementById('pgv-rec-status-verify');
+
+        audioEl.src = URL.createObjectURL(blobOrFile);
+        previewEl.style.display = 'flex';
+        statusEl.textContent = 'Загружаем...';
+
+        const fd = new FormData();
+        const ext = (filename.split('.').pop() || 'webm').toLowerCase();
+        const safeExt = ['mp3', 'wav', 'm4a', 'ogg', 'webm'].includes(ext) ? ext : 'webm';
+        fd.append('audio', blobOrFile, 'voice.' + safeExt);
+
+        try {
+            const r = await fetch('/api/public-generate/voice/upload', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': pgCsrf },
+                body: fd,
+            });
+            const d = await r.json();
+            if (!r.ok || !d.success) throw new Error(d.error || 'Ошибка загрузки');
+
+            if (target === 'source') {
+                pgv.sourceUrl = d.url;
+                document.getElementById('pgv-source-next').disabled = false;
+                statusEl.textContent = '✅ Аудио загружено';
+            } else {
+                pgv.verifyUrl = d.url;
+                document.getElementById('pgv-verify-next').disabled = false;
+                statusEl.textContent = '✅ Запись загружена';
+            }
+        } catch (e) {
+            pgvShowError(e.message);
+            statusEl.textContent = 'Не удалось загрузить — попробуй ещё раз';
+            previewEl.style.display = 'none';
+        }
+    }
+
+    function pgvClearSource() {
+        pgv.sourceUrl = null;
+        document.getElementById('pgv-file-preview-source').style.display = 'none';
+        document.getElementById('pgv-source-next').disabled = true;
+        document.getElementById('pgv-file-source').value = '';
+        document.getElementById('pgv-rec-status').textContent = 'Нажми, чтобы начать запись';
+    }
+    function pgvClearVerify() {
+        pgv.verifyUrl = null;
+        document.getElementById('pgv-file-preview-verify').style.display = 'none';
+        document.getElementById('pgv-verify-next').disabled = true;
+        document.getElementById('pgv-file-verify').value = '';
+        document.getElementById('pgv-rec-status-verify').textContent = 'Зачитай фразу выше';
+    }
+
+    // --- Шаг 1 → запрос фразы ---
+    async function pgvSubmitSource() {
+        if (!pgv.sourceUrl) { pgvShowError('Сначала запиши или загрузи аудио'); return; }
+        pgvHideError();
+
+        const start = parseInt(document.getElementById('pgv-vocal-start').value, 10) || 0;
+        const end = parseInt(document.getElementById('pgv-vocal-end').value, 10) || 20;
+        if (end <= start) { pgvShowError('Конец фрагмента должен быть позже начала'); return; }
+
+        const btn = document.getElementById('pgv-source-next');
+        btn.disabled = true; btn.textContent = 'Обрабатываем...';
+
+        try {
+            const r = await fetch('/api/public-generate/voice/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': pgCsrf },
+                body: JSON.stringify({
+                    source_audio_url: pgv.sourceUrl,
+                    vocal_start: start,
+                    vocal_end: end,
+                    language: pgData.language || 'ru',
+                }),
+            });
+            const d = await r.json();
+            if (!r.ok || !d.success) throw new Error(d.error || 'Ошибка');
+
+            pgv.taskId = d.task_id;
+            pgvSetStep('phrase');
+            pgvPollPhrase();
+        } catch (e) {
+            pgvShowError(e.message);
+        } finally {
+            btn.disabled = false; btn.textContent = 'Далее →';
+        }
+    }
+
+    // --- Поллинг контрольной фразы ---
+    function pgvPollPhrase() {
+        const phraseEl = document.getElementById('pgv-phrase-text');
+        const recBtn = document.getElementById('pgv-rec-btn-verify');
+        const statusEl = document.getElementById('pgv-rec-status-verify');
+        let attempts = 0;
+
+        pgv.phrasePoll = setInterval(async () => {
+            attempts++;
+            if (attempts > 40) { // ~2 мин
+                clearInterval(pgv.phrasePoll);
+                pgvShowError('Не удалось получить фразу. Попробуй другое аудио.');
+                pgvSetStep('source');
+                return;
+            }
+            try {
+                const r = await fetch('/api/public-generate/voice/phrase?task_id=' + encodeURIComponent(pgv.taskId));
+                const d = await r.json();
+                if (d.status === 'ready') {
+                    clearInterval(pgv.phrasePoll);
+                    phraseEl.innerHTML = '«' + d.verify_phrase + '»';
+                    recBtn.disabled = false;
+                    statusEl.textContent = 'Нажми, чтобы записать фразу';
+                } else if (d.status === 'failed') {
+                    clearInterval(pgv.phrasePoll);
+                    pgvShowError(d.error || 'Не удалось обработать голос');
+                    pgvSetStep('source');
+                }
+            } catch (e) { /* продолжаем поллинг */ }
+        }, 3000);
+    }
+
+    // --- Шаг 2 → генерация голоса ---
+    async function pgvSubmitVerify() {
+        if (!pgv.verifyUrl) { pgvShowError('Запиши или загрузи чтение фразы'); return; }
+        pgvHideError();
+
+        const btn = document.getElementById('pgv-verify-next');
+        btn.disabled = true; btn.textContent = 'Создаём...';
+
+        try {
+            const r = await fetch('/api/public-generate/voice/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': pgCsrf },
+                body: JSON.stringify({
+                    task_id: pgv.taskId,
+                    verify_audio_url: pgv.verifyUrl,
+                }),
+            });
+            const d = await r.json();
+            if (!r.ok || !d.success) throw new Error(d.error || 'Ошибка');
+
+            pgv.genTaskId = d.task_id;
+            pgvSetStep('generating');
+            pgvPollStatus();
+        } catch (e) {
+            pgvShowError(e.message);
+            btn.disabled = false; btn.textContent = 'Создать голос →';
+        }
+    }
+
+    // --- Поллинг готовности голоса ---
+    function pgvPollStatus() {
+        let attempts = 0;
+        pgv.statusPoll = setInterval(async () => {
+            attempts++;
+            if (attempts > 60) { // ~3 мин
+                clearInterval(pgv.statusPoll);
+                pgvShowError('Голос создаётся дольше обычного. Попробуй позже.');
+                pgvSetStep('phrase');
+                return;
+            }
+            try {
+                const r = await fetch('/api/public-generate/voice/status?task_id=' + encodeURIComponent(pgv.genTaskId));
+                const d = await r.json();
+                if (d.status === 'ready' && d.voice_id) {
+                    clearInterval(pgv.statusPoll);
+                    pgData.voiceId = d.voice_id;
+                    pgReachGoal('voice-ready');
+                    document.getElementById('pgv-connected').style.display = 'flex';
+                    pgvClose();
+                } else if (d.status === 'failed') {
+                    clearInterval(pgv.statusPoll);
+                    pgvShowError(d.error || 'Не удалось создать голос');
+                    pgvSetStep('phrase');
+                }
+            } catch (e) { /* продолжаем поллинг */ }
+        }, 3000);
     }
 </script>
 @endpush

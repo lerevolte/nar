@@ -16,6 +16,7 @@ class GuestOrder extends Model
         'genre',
         'artist',
         'vocal_gender',
+        'voice_id',
         'language',
         'occasion',
         'description',

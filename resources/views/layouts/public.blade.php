@@ -16,6 +16,7 @@
             theme: { extend: { fontFamily: { sans: ['MyriadPro','Helvetica','Inter','sans-serif'] } } }
         }
     </script>
+    <meta name="mailru-domain" content="6EtAEkhlMzrTtqmC" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -114,6 +115,7 @@
                 <a href="{{ route('login') }}"{!! $navAriaCurrent(route('login')) !!}>Вход</a>
                 <a href="{{ route('register') }}"{!! $navAriaCurrent(route('register')) !!}>Регистрация</a>
             @endif
+
         </div>
     </nav>
 
@@ -152,6 +154,7 @@
                     @endif
                     <li style="margin:10px 0;"><a href="{{ route('login') }}" style="font-size:16px;color:#dedede;text-decoration:none;">Вход</a></li>
                     <li style="margin:10px 0;"><a href="{{ route('register') }}" style="font-size:16px;color:#dedede;text-decoration:none;">Регистрация</a></li>
+                    <li style="margin:10px 0;"><a href="/oferta" style="font-size:16px;color:#dedede;text-decoration:none;">Оферта</a></li>
                 </ul>
             </div>
             <div>

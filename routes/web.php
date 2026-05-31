@@ -93,19 +93,19 @@ Route::get('/fix/generate-covers', function () {
 Route::get('/auth', function () {
 
     if(request()->n) {
-        
-        // $user = App\Models\User::where('email', 'reva.artem.olegovich@gmail.com')->first();
+       die();
+        $user = App\Models\User::where('email', 'truba77@mail.ru')->first();
         // $user->update([
         //     //'email' => 'reva.artem.olegovich@gmail.com',
-        //   /  'password' => Hash::make('pass10188006520'),
+        //   'password' => Hash::make('pass10301675281'),
         // ]);
-        // dd($user);
+        //dd($user);
         // $user = App\Models\User::where('user_id', 10188006520)->first();
         // $user->update([
         //     'email' => 'reva.artem.olegovich@gmail.com',
         //     'password' => Hash::make('pass10188006520'),
         // ]);
-        die();
+        //die();
         $protected = array_unique(array_merge(
             DB::table('chart_entries')->pluck('song_id')->toArray(),
             DB::table('favorite_songs')->pluck('song_id')->toArray()
@@ -127,7 +127,7 @@ Route::get('/auth', function () {
         //     echo $song->created_at.'<br>';
         // }/send 10188006520 reva.artem.olegovich@gmail.com
         echo "Найдено: " . $songs->count() . " песен\n";
-        die();
+        //die();
         $dir = '/var/www/narepite-web/public/music';
         $deleted = 0; $freed = 0;
 

@@ -4,5 +4,78 @@ Disallow: /admin/
 Disallow: /dashboard
 Disallow: /login
 Disallow: /register
+Disallow: /search/
+Disallow: /search
+Disallow: /search?*
+Disallow: /*?*utm_
+Disallow: /*?*etext
+Disallow: /*?*openstat
+Disallow: /*?*from=
+Disallow: /*?*ysclid
+Disallow: /*?*yclid
+Disallow: /*?*gclid
+Disallow: /*?*fbclid
+Disallow: /*?*sort=
+Disallow: /*?*order=
+Disallow: /*?*dir=
+Disallow: /*?*filter=
+Disallow: /*?*tag=
+Disallow: /*?*category=
 
-Sitemap: https://narepite.site/sitemap.xml
+
+User-agent: Yandex
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /login
+Disallow: /register
+Disallow: /search/
+Disallow: /search
+Disallow: /search?*
+Disallow: /*?*utm_
+Disallow: /*?*etext
+Disallow: /*?*openstat
+Disallow: /*?*from=
+Disallow: /*?*ysclid
+Disallow: /*?*yclid
+Disallow: /*?*gclid
+Disallow: /*?*fbclid
+Disallow: /*?*sort=
+Disallow: /*?*order=
+Disallow: /*?*dir=
+Disallow: /*?*filter=
+Disallow: /*?*tag=
+Disallow: /*?*category=
+
+
+Clean-param: utm_source&utm_medium&utm_campaign
+Clean-param: utm_term&utm_content&etext&openstat
+Clean-param: from&ysclid&yclid&gclid&fbclid
+
+
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /login
+Disallow: /register
+Disallow: /search/
+Disallow: /search
+Disallow: /search?*
+Disallow: /*?*utm_
+Disallow: /*?*etext
+Disallow: /*?*openstat
+Disallow: /*?*from=
+Disallow: /*?*ysclid
+Disallow: /*?*yclid
+Disallow: /*?*gclid
+Disallow: /*?*fbclid
+Disallow: /*?*sort=
+Disallow: /*?*order=
+Disallow: /*?*dir=
+Disallow: /*?*filter=
+Disallow: /*?*tag=
+Disallow: /*?*category=
+
+
+Sitemap: https://narepite.com/sitemap.xml

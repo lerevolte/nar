@@ -45,6 +45,7 @@
 
     <h1 class="static-page-title">{{ $page->title }}</h1>
 
+    @if($page->banner_text)
     <div class="static-page-banner"
         @if($page->banner_image)
             style="background-image: url('{{ $page->banner_image }}'); background-size: cover; background-position: center;"
@@ -61,7 +62,7 @@
             </div>
         </div>
     </div>
-
+    @endif
     <div class="static-page-content">
         {!! $page->content_html !!}
     </div>

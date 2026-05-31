@@ -466,7 +466,7 @@ class SunoService
                     : "{$this->apiUrl}/generate";
 
                 $response = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . ($personaId && $personaSource === 'kie' ? '472ab240acbfc09784bd4d96d2630fbb' : $this->apiKey),
+                    'Authorization' => 'Bearer ' . ($personaId && $personaSource === 'kie' ? config('services.kie.api_key') : $this->apiKey),
                     'Content-Type' => 'application/json',
                 ])->timeout(60)->post($generateUrl, $payload);
 
@@ -534,7 +534,7 @@ class SunoService
             Log::info("checkStatus: taskId={$taskId}, apiSource={$apiSource}, url={$checkUrl}");
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . ($apiSource ? '472ab240acbfc09784bd4d96d2630fbb' : $this->apiKey),
+                'Authorization' => 'Bearer ' . ($apiSource === 'kie' ? config('services.kie.api_key') : $this->apiKey),
                 'Content-Type' => 'application/json',
             ])->timeout(30)->get($checkUrl, [
                 'taskId' => $taskId,

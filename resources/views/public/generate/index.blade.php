@@ -937,6 +937,141 @@
     @media (max-width: 480px) {
         .pg-mode-tabs { grid-template-columns: 1fr; }
     }
+
+    /* === «СВОЙ ГОЛОС» === */
+    .pgv-banner {
+        max-width: 760px;
+        margin: 0 auto 8px;
+        background: linear-gradient(135deg, #ec4899, #8b5cf6);
+        color: #fff;
+        border-radius: 20px;
+        padding: 22px 24px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        box-shadow: 0 12px 30px rgba(236, 72, 153, 0.28);
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
+    }
+    .pgv-banner-emoji { font-size: 42px; line-height: 1; }
+    .pgv-banner-text { flex: 1; min-width: 220px; text-align: left; }
+    .pgv-banner-title { font-size: 21px; font-weight: 900; letter-spacing: -0.3px; }
+    .pgv-banner-sub { font-size: 14px; opacity: 0.95; margin-top: 4px; line-height: 1.5; }
+    .pgv-banner .pg-btn { white-space: nowrap; background: #fff; color: #be185d; font-weight: 800; }
+    @media (max-width: 560px) {
+        .pgv-banner-text { text-align: center; }
+        .pgv-banner { padding: 18px; }
+    }
+
+    /* CTA внутри шага «Кто поёт?» */
+    .pgv-cta {
+        margin-top: 18px;
+        padding: 16px;
+        border: 2px dashed var(--pg-accent-2, #f472b6);
+        border-radius: 16px;
+        background: var(--pg-bg-soft, #fdf2f8);
+        text-align: center;
+    }
+    .pgv-cta-text { font-size: 14px; color: #6b7280; margin-bottom: 12px; line-height: 1.5; }
+    .pgv-cta-text strong { color: #be185d; font-size: 15px; }
+    .pgv-connected {
+        margin-top: 12px; font-size: 14px; font-weight: 700; color: #059669;
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .pgv-connected button {
+        background: none; border: none; color: #9ca3af; cursor: pointer;
+        font-size: 12px; text-decoration: underline;
+    }
+
+    /* Модалка */
+    .pgv-modal {
+        display: none; position: fixed; inset: 0; z-index: 9999;
+        background: rgba(17, 24, 39, 0.6); backdrop-filter: blur(2px);
+        align-items: center; justify-content: center; padding: 16px;
+    }
+    .pgv-modal.active { display: flex; }
+    .pgv-modal-card {
+        background: #fff; border-radius: 20px; width: 100%; max-width: 480px;
+        max-height: 92vh; overflow-y: auto; padding: 24px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .pgv-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .pgv-modal-head h3 { font-size: 18px; font-weight: 800; }
+    .pgv-close { background: none; border: none; font-size: 22px; cursor: pointer; color: #9ca3af; line-height: 1; }
+
+    .pgv-info {
+        padding: 14px 16px; background: var(--pg-bg-soft, #fdf2f8);
+        border: 1px solid #fbcfe8; border-radius: 14px;
+        font-size: 13px; color: #6b7280; line-height: 1.6; margin-bottom: 18px;
+    }
+    .pgv-info strong { color: #be185d; }
+
+    .pgv-step { display: none; }
+    .pgv-step.active { display: block; }
+
+    .pgv-progress { display: flex; gap: 8px; margin-bottom: 18px; }
+    .pgv-progress-step { flex: 1; height: 4px; border-radius: 2px; background: #f3e8f1; }
+    .pgv-progress-step.done { background: var(--pg-accent, #ec4899); }
+    .pgv-progress-step.current { background: var(--pg-accent, #ec4899); opacity: 0.5; }
+
+    .pgv-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #374151; }
+    .pgv-text-input {
+        width: 100%; padding: 11px 14px; border: 1px solid #e5e7eb;
+        border-radius: 12px; font-size: 14px; box-sizing: border-box;
+    }
+
+    .pgv-record-controls { display: flex; gap: 12px; justify-content: center; margin: 16px 0; }
+    .pgv-record-btn {
+        width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
+        font-size: 24px; display: flex; align-items: center; justify-content: center;
+        transition: transform 0.15s;
+    }
+    .pgv-record-btn:hover { transform: scale(1.1); }
+    .pgv-record-btn.rec { background: #ef4444; color: #fff; }
+    .pgv-record-btn.rec.recording { animation: pgv-pulse 1s ease-in-out infinite; }
+    .pgv-record-btn.stop { background: #f3f4f6; color: #111; border: 2px solid #e5e7eb; }
+    @keyframes pgv-pulse {
+        0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+        50% { box-shadow: 0 0 0 12px rgba(239,68,68,0); }
+    }
+
+    .pgv-status { text-align: center; font-size: 13px; color: #9ca3af; margin-bottom: 12px; }
+
+    .pgv-or { display: flex; align-items: center; margin: 16px 0; color: #9ca3af; font-size: 13px; }
+    .pgv-or::before, .pgv-or::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+    .pgv-or::before { margin-right: 12px; }
+    .pgv-or::after { margin-left: 12px; }
+
+    .pgv-upload {
+        border: 2px dashed #e5e7eb; border-radius: 12px; padding: 24px 16px;
+        text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    }
+    .pgv-upload:hover, .pgv-upload.dragover { border-color: var(--pg-accent, #ec4899); background: var(--pg-bg-soft, #fdf2f8); }
+    .pgv-upload-text { font-size: 14px; color: #6b7280; }
+    .pgv-upload-hint { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+
+    .pgv-file { display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9fafb; border-radius: 12px; margin-top: 12px; }
+    .pgv-file audio { flex: 1; height: 36px; }
+    .pgv-file-remove { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 16px; }
+
+    .pgv-time { display: flex; align-items: center; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .pgv-time label { font-size: 13px; color: #6b7280; }
+    .pgv-time input { width: 76px; padding: 8px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; text-align: center; }
+
+    .pgv-phrase {
+        background: var(--pg-bg-soft, #fdf2f8); border: 1px solid #fbcfe8; border-radius: 12px;
+        padding: 18px; text-align: center; font-size: 17px; line-height: 1.6;
+        font-weight: 700; color: #111; margin: 14px 0;
+    }
+
+    .pgv-spinner {
+        display: inline-block; width: 16px; height: 16px;
+        border: 2px solid #f3e8f1; border-top-color: var(--pg-accent, #ec4899);
+        border-radius: 50%; animation: pgv-spin 0.8s linear infinite;
+        vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes pgv-spin { to { transform: rotate(360deg); } }
 </style>
 @endpush
 

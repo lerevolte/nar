@@ -259,13 +259,21 @@ class GuestOrderService
             ]);
 
             // Запускаем Suno (формат ответа см. SunoService::generateMusic)
-            $result = $sunoService->generateMusic([
+            $sunoParams = [
                 'title'   => $order->title,
                 'lyrics'  => $order->lyrics,
                 'genre'   => $order->genre,
                 'artist'  => $order->artist,
                 'gender'  => $vocalGender,
-            ]);
+            ];
+
+            // «Свой голос» (разовый, гостевой): kie voice_id выбран в визарде
+            if (!empty($order->voice_id)) {
+                $sunoParams['persona_id'] = $order->voice_id;
+                $sunoParams['persona_source'] = 'kie';
+            }
+
+            $result = $sunoService->generateMusic($sunoParams);
 
             if (!$result['success']) {
                 // Возвращаем песню на баланс + помечаем заказ как failed

@@ -47,6 +47,25 @@
         transition: background var(--duration) var(--ease);
     }
     .view-chart-btn:hover { background: var(--surface-glass-hover); }
+
+    .pagination { display: flex; justify-content: center; margin-top: 24px; }
+    .pager { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .pager-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 38px; height: 38px; padding: 0 10px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text-primary);
+        font-size: 14px; font-weight: 600; line-height: 1;
+        transition: all var(--duration) var(--ease);
+    }
+    .pager-btn:hover { border-color: var(--border-strong); background: var(--surface-glass-hover); }
+    .pager-btn--active { background: var(--accent); border-color: var(--accent); color: #fff; cursor: default; }
+    .pager-btn--active:hover { background: var(--accent); border-color: var(--accent); }
+    .pager-btn--disabled { color: var(--text-tertiary); opacity: 0.5; cursor: not-allowed; }
+    .pager-btn--disabled:hover { border-color: var(--border); background: var(--bg-card); }
+    .pager-dots { padding: 0 4px; color: var(--text-tertiary); }
 </style>
 @endpush
 
@@ -128,7 +147,7 @@
 
     @if($charts->hasPages())
         <div class="pagination">
-            {{ $charts->links() }}
+            {{ $charts->links('vendor.pagination.narepite') }}
         </div>
     @endif
 @endif

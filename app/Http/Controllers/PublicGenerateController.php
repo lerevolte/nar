@@ -582,8 +582,6 @@ class PublicGenerateController extends Controller
             return response()->json(['error' => 'Order not found'], 404);
         }
 
-        $wasNotPaid = ! $order->isPaid();
-
         if ($order->status === 'pending_payment' && $order->payment_id) {
             $this->refreshPaymentFromYooKassa($order, $orderService);
             $order->refresh();
@@ -597,9 +595,10 @@ class PublicGenerateController extends Controller
             'amount' => (int) $order->amount,
         ];
 
-        // Только что оплачено — выдаём одноразовый login_token (5 минут)
-        // Только если у этого браузера ещё нет cookie tg_session
-        if ($wasNotPaid && $order->isPaid() && $order->user_id && ! $request->cookie('tg_session')) {
+        // Заказ оплачен и пользователь ещё не авторизован в этом браузере —
+        // выдаём одноразовый login_token (5 минут) для авто-логина.
+        // Не зависит от того, кто обработал платёж (вебхук или этот polling).
+        if ($order->isPaid() && $order->user_id && ! $request->cookie('tg_session')) {
             $loginToken = \Illuminate\Support\Str::random(64);
             $order->update([
                 'login_token' => hash('sha256', $loginToken),

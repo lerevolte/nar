@@ -422,12 +422,12 @@
                     ⚠️ Сохрани пароль в надёжном месте. Мы не сможем его восстановить — только сбросить.
                 </div>
 
-                <a href="/" class="pgs-cabinet-btn">Перейти в личный кабинет →</a>
+                <a href="/dashboard" class="pgs-cabinet-btn">Перейти в личный кабинет →</a>
             </div>
 
             {{-- Блок для существующего юзера (пароль не показываем) --}}
             <div id="existing-user-block" style="display: none; margin-top: 16px;">
-                <a href="/" class="pgs-cabinet-btn">Перейти в личный кабинет →</a>
+                <a href="/dashboard" class="pgs-cabinet-btn">Перейти в личный кабинет →</a>
                 <p style="font-size: 12px; color: #6b7280; margin-top: 10px;">
                     Ты уже есть в системе — вошёл автоматически
                 </p>

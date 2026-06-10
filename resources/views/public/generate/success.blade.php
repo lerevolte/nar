@@ -515,6 +515,19 @@ async function pollPayment() {
             return;
         }
 
+        // Заказ оплачен, но генерация ранее упала — сразу показываем экран с кнопкой «Повторить»
+        if (d.status === 'failed') {
+            if (d.login_token) {
+                await ensureAutoLogin(d.login_token);
+            }
+            showError(
+                'Ошибка генерации',
+                'К сожалению, не удалось сгенерировать песню. Мы вернули 1 песню на твой баланс — можешь попробовать ещё раз.',
+                true
+            );
+            return;
+        }
+
         if (paymentPollAttempts >= maxPaymentPolls) {
             showError('Оплата не подтвердилась за 2 минуты', 'Если деньги списаны — напиши в поддержку, создадим песню вручную.');
             return;

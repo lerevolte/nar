@@ -595,10 +595,10 @@ class PublicGenerateController extends Controller
             'amount' => (int) $order->amount,
         ];
 
-        // Заказ оплачен и пользователь ещё не авторизован в этом браузере —
-        // выдаём одноразовый login_token (5 минут) для авто-логина.
-        // Не зависит от того, кто обработал платёж (вебхук или этот polling).
-        if ($order->isPaid() && $order->user_id && ! $request->cookie('tg_session')) {
+        // Заказ оплачен (в т.ч. со статусом failed — генерация упала, но оплата была)
+        // и пользователь ещё не авторизован в этом браузере — выдаём одноразовый
+        // login_token (5 минут) для авто-логина. Проверяем факт оплаты по paid_at.
+        if ($order->paid_at && $order->user_id && ! $request->cookie('tg_session')) {
             $loginToken = \Illuminate\Support\Str::random(64);
             $order->update([
                 'login_token' => hash('sha256', $loginToken),

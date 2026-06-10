@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GuestOrder;
 use App\Models\Payment;
 use App\Models\PromoCode;
 use App\Models\UsedPromoCode;
+use App\Services\GuestOrderService;
+use App\Services\SunoService;
 use App\Services\YooKassaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -39,7 +42,7 @@ class PaymentController extends Controller
 
         $result = $yooKassa->createPayment($user->user_id, $songsCount, $contact);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json(['error' => $result['error']], 400);
         }
 
@@ -57,7 +60,7 @@ class PaymentController extends Controller
         $user = $request->get('auth_user');
         $processed = false;
         $songsAdded = 0;
-        
+
         if ($user) {
             $payment = Payment::where('user_id', $user->user_id)
                 ->where('status', 'pending')
@@ -78,21 +81,89 @@ class PaymentController extends Controller
     /**
      * Webhook от ЮKassa
      */
-    public function webhook(Request $request, YooKassaService $yooKassa)
+    public function webhook(Request $request, YooKassaService $yooKassa, GuestOrderService $guestOrderService, SunoService $sunoService)
     {
         $data = $request->all();
 
         Log::info('YooKassa webhook received', $data);
 
-        if (!isset($data['event']) || !isset($data['object']['id'])) {
+        if (! isset($data['event']) || ! isset($data['object']['id'])) {
             return response()->json(['error' => 'Invalid data'], 400);
         }
 
         $event = $data['event'];
         $paymentId = $data['object']['id'];
 
-        if ($event === 'payment.succeeded') {
-            $yooKassa->processSuccessfulPayment($paymentId);
+        // Интересует только успешная оплата; остальные события подтверждаем 200, чтобы ЮKassa не повторяла
+        if ($event !== 'payment.succeeded') {
+            return response()->json(['success' => true]);
+        }
+
+        // 1. Покупка пакета из ЛК (есть запись Payment по payment_id)
+        if (Payment::where('payment_id', $paymentId)->exists()) {
+            $ok = $yooKassa->processSuccessfulPayment($paymentId);
+
+            // Не начислили (платёж ещё не succeeded / временный сбой) → 500, чтобы ЮKassa повторила
+            return response()->json(['success' => $ok], $ok ? 200 : 500);
+        }
+
+        // 2. Гостевой заказ с лендинга (в metadata.order_token)
+        $orderToken = $data['object']['metadata']['order_token'] ?? null;
+
+        if ($orderToken) {
+            return $this->handleGuestOrderWebhook($orderToken, $paymentId, $yooKassa, $guestOrderService, $sunoService);
+        }
+
+        // Неизвестный платёж — подтверждаем, повторять нечего
+        Log::warning('YooKassa webhook: unknown payment', ['payment_id' => $paymentId]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Обработка вебхука для гостевого заказа с лендинга /create-song.
+     * Начисляет баланс и сразу запускает генерацию (не зависит от браузера пользователя).
+     */
+    private function handleGuestOrderWebhook(
+        string $orderToken,
+        string $paymentId,
+        YooKassaService $yooKassa,
+        GuestOrderService $guestOrderService,
+        SunoService $sunoService
+    ) {
+        $order = GuestOrder::where('token', $orderToken)->first();
+
+        if (! $order) {
+            Log::warning('Webhook: guest order not found', ['token' => $orderToken]);
+
+            return response()->json(['success' => true]); // повторять нечего
+        }
+
+        // Проверяем статус платежа через API ЮKassa (защита от подделки вебхука)
+        $check = $yooKassa->checkPayment($paymentId);
+        if (($check['status'] ?? null) !== 'succeeded') {
+            Log::info('Webhook: guest payment not succeeded yet', [
+                'token' => $orderToken,
+                'status' => $check['status'] ?? 'unknown',
+            ]);
+
+            return response()->json(['success' => false], 500); // пусть ЮKassa повторит
+        }
+
+        $result = $guestOrderService->handlePaymentSucceeded($order);
+
+        if (! ($result['success'] ?? false)) {
+            Log::error('Webhook: guest order handlePaymentSucceeded failed', ['token' => $orderToken]);
+
+            return response()->json(['success' => false], 500);
+        }
+
+        // Авто-старт генерации (идемпотентно — повторный вызов из поллинга безопасен)
+        // Письмо с доступами и уведомление админам отправляются внутри handlePaymentSucceeded.
+        try {
+            $guestOrderService->startGeneration($order->fresh(), $sunoService);
+        } catch (\Exception $e) {
+            Log::error('Webhook: guest startGeneration failed: '.$e->getMessage());
         }
 
         return response()->json(['success' => true]);
@@ -131,11 +202,11 @@ class PaymentController extends Controller
 
         $promo = PromoCode::where('code', $code)->first();
 
-        if (!$promo) {
+        if (! $promo) {
             return response()->json(['error' => 'Промокод не найден'], 404);
         }
 
-        if (!$promo->is_active) {
+        if (! $promo->is_active) {
             return response()->json(['error' => 'Промокод неактивен'], 400);
         }
 
@@ -174,11 +245,11 @@ class PaymentController extends Controller
 
         $promo = PromoCode::where('code', $code)->first();
 
-        if (!$promo) {
+        if (! $promo) {
             return response()->json(['error' => 'Промокод не найден'], 404);
         }
 
-        if (!$promo->is_active) {
+        if (! $promo->is_active) {
             return response()->json(['error' => 'Промокод неактивен'], 400);
         }
 
@@ -213,7 +284,7 @@ class PaymentController extends Controller
                 $promo->increment('current_uses');
             });
 
-            Log::info("Promo code applied", [
+            Log::info('Promo code applied', [
                 'code' => $promo->code,
                 'user_id' => $user->user_id,
                 'songs_added' => $songsToAdd,
@@ -252,7 +323,7 @@ class PaymentController extends Controller
         $user = $request->get('auth_user');
         $promo = PromoCode::find($request->input('promo_id'));
 
-        if (!$promo || !$promo->isValid() || $promo->isUsedByUser($user->user_id)) {
+        if (! $promo || ! $promo->isValid() || $promo->isUsedByUser($user->user_id)) {
             return response()->json(['error' => 'Промокод недействителен'], 400);
         }
 
@@ -316,8 +387,9 @@ class PaymentController extends Controller
                     ],
                 ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::error('YooKassa promo payment error', ['body' => $response->body()]);
+
                 return response()->json(['error' => 'Ошибка создания платежа'], 400);
             }
 
@@ -357,7 +429,8 @@ class PaymentController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Promo payment exception: ' . $e->getMessage());
+            Log::error('Promo payment exception: '.$e->getMessage());
+
             return response()->json(['error' => 'Ошибка платёжной системы'], 500);
         }
     }
@@ -367,7 +440,7 @@ class PaymentController extends Controller
      */
     private function prepareCustomerData(?string $contact): array
     {
-        if (!$contact) {
+        if (! $contact) {
             return ['email' => 'customer@narepite.site'];
         }
 
@@ -394,13 +467,13 @@ class PaymentController extends Controller
 
         if (strlen($digits) === 11) {
             if (str_starts_with($digits, '8')) {
-                $digits = '7' . substr($digits, 1);
+                $digits = '7'.substr($digits, 1);
             }
         } elseif (strlen($digits) === 10) {
-            $digits = '7' . $digits;
+            $digits = '7'.$digits;
         }
 
-        if (strlen($digits) !== 11 || !str_starts_with($digits, '7')) {
+        if (strlen($digits) !== 11 || ! str_starts_with($digits, '7')) {
             return null;
         }
 

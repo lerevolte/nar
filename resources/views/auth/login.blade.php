@@ -115,6 +115,10 @@
             <button type="submit" class="login-btn">Войти</button>
         </form>
 
+        <div class="register-link" style="margin-top: 12px;">
+            <a href="{{ route('password.request') }}">Забыли пароль?</a>
+        </div>
+
         <div class="register-link">
             Нет аккаунта? <a href="/register">Зарегистрироваться</a>
         </div>

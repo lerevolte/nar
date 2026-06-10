@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Song extends Model
 {
     protected $table = 'songs';
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -28,15 +29,17 @@ class Song extends Model
         'audio_id_2',
         'video_url',
         'is_deleted',
+        'refunded_at',
         'stem_task_id_1',
         'stem_task_id_2',
         'cover_url',
         'plays_count',
-        'api_source'
+        'api_source',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
+        'refunded_at' => 'datetime',
     ];
 
     public function user()

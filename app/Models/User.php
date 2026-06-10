@@ -10,8 +10,11 @@ class User extends Authenticatable
     use Notifiable;
 
     protected $table = 'users';
+
     protected $primaryKey = 'user_id';
+
     public $incrementing = false;
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -83,5 +86,20 @@ class User extends Authenticatable
     public function getLoginIdentifier(): string
     {
         return $this->email ?? (string) $this->user_id;
+    }
+
+    /**
+     * Отправить ссылку для сброса пароля своим брендированным письмом
+     * (вместо стандартного англоязычного уведомления Laravel).
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $resetUrl = url(route('password.reset', [
+            'token' => $token,
+            'email' => $this->getEmailForPasswordReset(),
+        ], false));
+
+        \Illuminate\Support\Facades\Mail::to($this->getEmailForPasswordReset())
+            ->queue(new \App\Mail\ResetPasswordMail($resetUrl));
     }
 }

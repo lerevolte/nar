@@ -2,15 +2,15 @@
 
 namespace App\Services;
 
+use App\Jobs\CheckSongGenerationStatus;
+use App\Mail\AccountCredentialsMail;
 use App\Models\GuestOrder;
 use App\Models\Payment;
-use App\Models\User;
 use App\Models\Song;
-use App\Services\SunoService;
-use App\Jobs\CheckSongGenerationStatus;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 
 class GuestOrderService
 {
@@ -74,6 +74,34 @@ class GuestOrderService
                 'contact_type' => $order->contact_type,
             ]);
 
+            // Письмо с доступами в ЛК (только если контакт — email).
+            // Не должно ронять обработку оплаты.
+            if ($order->contact_type === 'email' && $order->contact) {
+                try {
+                    Mail::to($order->contact)->queue(new AccountCredentialsMail(
+                        login: $order->contact,
+                        password: $isNewUser ? $plainPassword : null,
+                        title: (string) $order->title,
+                    ));
+                } catch (\Exception $e) {
+                    Log::error('AccountCredentialsMail failed: '.$e->getMessage());
+                }
+            }
+
+            // Уведомление админам об оплате (идемпотентно — этот код выполняется один раз).
+            try {
+                app(TelegramNotificationService::class)->notifyAdminsPayment([
+                    'amount' => $order->amount,
+                    'songs_count' => 1,
+                    'contact' => $order->contact,
+                    'context' => 'public_landing',
+                    'user_id' => $user->user_id,
+                    'payment_id' => $order->payment_id,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Admin payment notification (guest) failed: '.$e->getMessage());
+            }
+
             return [
                 'success' => true,
                 'user_id' => $user->user_id,
@@ -88,6 +116,7 @@ class GuestOrderService
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
@@ -121,6 +150,7 @@ class GuestOrderService
             if ($order->contact_type === 'email' && empty($user->email)) {
                 $user->update(['email' => $order->contact]);
             }
+
             return [$user, false, null];
         }
 
@@ -146,11 +176,11 @@ class GuestOrderService
             'balance' => 0, // увеличим через increment
             'is_blocked' => false,
             'last_activity' => now(),
-            'utm_source'   => $order->utm_source ?: 'public_landing',
-            'utm_medium'   => $order->utm_medium,
+            'utm_source' => $order->utm_source ?: 'public_landing',
+            'utm_medium' => $order->utm_medium,
             'utm_campaign' => $order->utm_campaign,
-            'utm_content'  => $order->utm_content,
-            'utm_term'     => $order->utm_term,
+            'utm_content' => $order->utm_content,
+            'utm_term' => $order->utm_term,
             'ym_client_id' => $order->ym_client_id,
         ];
 
@@ -170,7 +200,7 @@ class GuestOrderService
     {
         for ($i = 0; $i < 20; $i++) {
             $id = random_int(9_000_000_000, 9_999_999_999);
-            if (!User::where('user_id', $id)->exists()) {
+            if (! User::where('user_id', $id)->exists()) {
                 return $id;
             }
         }
@@ -188,7 +218,8 @@ class GuestOrderService
         ];
         $word = $words[array_rand($words)];
         $digits = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
-        return ucfirst($word) . $digits;
+
+        return ucfirst($word).$digits;
     }
 
     /**
@@ -206,7 +237,6 @@ class GuestOrderService
         ]);
     }
 
-
     /**
      * Запускает генерацию песни для оплаченного гостевого заказа.
      * Идемпотентна — повторные вызовы безопасны.
@@ -214,24 +244,25 @@ class GuestOrderService
     public function startGeneration(GuestOrder $order, SunoService $sunoService): array
     {
         // Проверки
-        if (!$order->isPaid() || !$order->user_id) {
+        if (! $order->isPaid() || ! $order->user_id) {
             return ['success' => false, 'error' => 'Заказ не оплачен'];
         }
 
         // Если генерация уже запущена / завершена — ничего не делаем
         if (in_array($order->status, ['generating', 'completed']) && $order->song_id) {
             $song = Song::find($order->song_id);
+
             return [
                 'success' => true,
                 'song_id' => $order->song_id,
                 'already_started' => true,
-                'is_ready' => $song ? (!empty($song->file_path) && !empty($song->file_path_2)) : false,
+                'is_ready' => $song ? (! empty($song->file_path) && ! empty($song->file_path_2)) : false,
             ];
         }
 
         try {
             $user = User::where('user_id', $order->user_id)->first();
-            if (!$user) {
+            if (! $user) {
                 throw new \RuntimeException('User not found for paid order');
             }
 
@@ -248,37 +279,37 @@ class GuestOrderService
 
             // Создаём Song (под реальную схему)
             $song = Song::create([
-                'user_id'     => $user->user_id,
-                'title'       => $order->title,
-                'occasion'    => $order->occasion,
-                'genre'       => $order->genre,
+                'user_id' => $user->user_id,
+                'title' => $order->title,
+                'occasion' => $order->occasion,
+                'genre' => $order->genre,
                 'description' => $order->description,
-                'lyrics'      => $order->lyrics,
-                'is_deleted'  => 0,
+                'lyrics' => $order->lyrics,
+                'is_deleted' => 0,
                 'plays_count' => 0,
             ]);
 
             // Запускаем Suno (формат ответа см. SunoService::generateMusic)
             $sunoParams = [
-                'title'   => $order->title,
-                'lyrics'  => $order->lyrics,
-                'genre'   => $order->genre,
-                'artist'  => $order->artist,
-                'gender'  => $vocalGender,
+                'title' => $order->title,
+                'lyrics' => $order->lyrics,
+                'genre' => $order->genre,
+                'artist' => $order->artist,
+                'gender' => $vocalGender,
             ];
 
             // «Свой голос» (разовый, гостевой): kie voice_id выбран в визарде
-            if (!empty($order->voice_id)) {
+            if (! empty($order->voice_id)) {
                 $sunoParams['persona_id'] = $order->voice_id;
                 $sunoParams['persona_source'] = 'kie';
             }
 
             $result = $sunoService->generateMusic($sunoParams);
 
-            if (!$result['success']) {
+            if (! $result['success']) {
                 // Возвращаем песню на баланс + помечаем заказ как failed
                 $user->increment('balance', 1);
-                $song->update(['is_deleted' => 1]);
+                $song->update(['is_deleted' => 1, 'refunded_at' => now()]);
                 $order->update(['status' => 'failed']);
 
                 Log::error('Guest order Suno generation failed to start', [
@@ -324,7 +355,39 @@ class GuestOrderService
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return ['success' => false, 'error' => $e->getMessage()];
         }
+    }
+
+    /**
+     * Повторный запуск генерации для заказа, у которого генерация упала.
+     * Баланс к этому моменту уже возвращён (в startGeneration / job).
+     */
+    public function retryGeneration(GuestOrder $order, SunoService $sunoService): array
+    {
+        // Заказ со статусом 'failed' уже НЕ проходит isPaid(), поэтому проверяем факт оплаты по paid_at
+        if (! $order->user_id || ! $order->paid_at) {
+            return ['success' => false, 'error' => 'Заказ не оплачен'];
+        }
+
+        if ($order->status !== 'failed') {
+            // Уже в работе или завершён — повторять нечего, отдаём текущее состояние
+            return $this->startGeneration($order, $sunoService);
+        }
+
+        // Сбрасываем заказ в оплаченное состояние для нового прогона
+        $order->update([
+            'status' => 'paid',
+            'song_id' => null,
+            'suno_task_id' => null,
+        ]);
+
+        Log::info('Guest order generation retry requested', [
+            'order_id' => $order->id,
+            'token' => $order->token,
+        ]);
+
+        return $this->startGeneration($order->fresh(), $sunoService);
     }
 }

@@ -2,23 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\GuestOrder;
-use App\Services\LyricsGeneratorService;
-use App\Services\YooKassaService;
-use App\Services\GuestOrderService;
-use App\Services\VoiceService;
-use App\Models\Song;
 use App\Models\ChartEntry;
 use App\Models\ChartVote;
+use App\Models\GuestOrder;
+use App\Models\Song;
+use App\Services\GuestOrderService;
+use App\Services\LyricsGeneratorService;
 use App\Services\SunoService;
+use App\Services\TelegramAuthService;
+use App\Services\VoiceService;
+use App\Services\YooKassaService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use App\Services\TelegramAuthService;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Cookie;
 
 class PublicGenerateController extends Controller
 {
@@ -81,12 +81,12 @@ class PublicGenerateController extends Controller
 
         // Топ треки за всё время (суммируем голоса по всем чартам)
         $entries = ChartEntry::select(
-                'song_id',
-                'user_id',
-                \DB::raw('SUM(votes_count) as total_votes'),
-                \DB::raw('MIN(id) as id'),
-                \DB::raw('MIN(created_at) as first_added')
-            )
+            'song_id',
+            'user_id',
+            \DB::raw('SUM(votes_count) as total_votes'),
+            \DB::raw('MIN(id) as id'),
+            \DB::raw('MIN(created_at) as first_added')
+        )
             ->with(['song', 'user'])
             ->groupBy('song_id', 'user_id')
             ->having('total_votes', '>', 0)
@@ -97,7 +97,9 @@ class PublicGenerateController extends Controller
 
         $topTracks = $entries->map(function ($entry, $index) {
             $song = $entry->song;
-            if (!$song || !$song->file_path) return null;
+            if (! $song || ! $song->file_path) {
+                return null;
+            }
 
             return [
                 'position' => $index + 1,
@@ -115,7 +117,6 @@ class PublicGenerateController extends Controller
                 'user_id' => $entry->user_id,
             ];
         })->filter()->values()->toArray();
-
 
         $votedSongIds = [];
         if ($authUser) {
@@ -152,11 +153,12 @@ class PublicGenerateController extends Controller
     public function generateLyrics(Request $request, LyricsGeneratorService $lyricsService)
     {
         // Rate limit: 10 запросов в час с одного IP
-        $key = 'public-lyrics:' . $request->ip();
+        $key = 'public-lyrics:'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, 10)) {
             $seconds = RateLimiter::availableIn($key);
+
             return response()->json([
-                'error' => "Слишком много запросов. Попробуй через " . ceil($seconds / 60) . " мин.",
+                'error' => 'Слишком много запросов. Попробуй через '.ceil($seconds / 60).' мин.',
             ], 429);
         }
         RateLimiter::hit($key, 3600);
@@ -179,7 +181,7 @@ class PublicGenerateController extends Controller
             'vocal_gender' => $request->input('vocal_gender'),
         ]);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json(['error' => $result['error'] ?? 'Ошибка генерации'], 500);
         }
 
@@ -199,7 +201,7 @@ class PublicGenerateController extends Controller
      */
     public function translateLyrics(Request $request, LyricsGeneratorService $lyricsService)
     {
-        $key = 'public-translate:' . $request->ip();
+        $key = 'public-translate:'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, 15)) {
             return response()->json(['error' => 'Слишком много запросов'], 429);
         }
@@ -215,7 +217,7 @@ class PublicGenerateController extends Controller
             $request->input('target_language')
         );
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json(['error' => $result['error'] ?? 'Ошибка перевода'], 500);
         }
 
@@ -230,7 +232,7 @@ class PublicGenerateController extends Controller
      */
     public function improveLyrics(Request $request, LyricsGeneratorService $lyricsService)
     {
-        $key = 'public-improve:' . $request->ip();
+        $key = 'public-improve:'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, 20)) {
             return response()->json(['error' => 'Слишком много запросов'], 429);
         }
@@ -255,7 +257,7 @@ class PublicGenerateController extends Controller
             ]
         );
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json(['error' => $result['error'] ?? 'Ошибка'], 500);
         }
 
@@ -279,7 +281,7 @@ class PublicGenerateController extends Controller
         YooKassaService $yooKassa
     ) {
         // Rate limit: 5 заказов в час с IP
-        $key = 'public-order:' . $request->ip();
+        $key = 'public-order:'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, 5)) {
             return response()->json(['error' => 'Слишком много заказов. Попробуй через час.'], 429);
         }
@@ -287,24 +289,24 @@ class PublicGenerateController extends Controller
 
         $request->validate([
             // Данные песни
-            'title'         => 'nullable|string|max:255',
-            'lyrics'        => 'required|string|max:10000',
-            'genre'         => 'required|string|max:255',
-            'artist'        => 'nullable|string|max:255',
-            'vocal_gender'  => 'sometimes|nullable|string|in:m,f,duet,random',
-            'voice_id'      => 'nullable|string|max:255',
-            'language'      => 'required|string|in:ru,en,de,es,fr,it',
-            'occasion'      => 'nullable|string|max:500',
-            'description'   => 'nullable|string|max:10000',
+            'title' => 'nullable|string|max:255',
+            'lyrics' => 'required|string|max:10000',
+            'genre' => 'required|string|max:255',
+            'artist' => 'nullable|string|max:255',
+            'vocal_gender' => 'sometimes|nullable|string|in:m,f,duet,random',
+            'voice_id' => 'nullable|string|max:255',
+            'language' => 'required|string|in:ru,en,de,es,fr,it',
+            'occasion' => 'nullable|string|max:500',
+            'description' => 'nullable|string|max:10000',
             // Контакт
-            'first_name'    => 'nullable|string|max:100',
-            'contact'       => 'required|string|max:255',
-            'utm_source'    => 'nullable|string|max:100',
-            'utm_medium'    => 'nullable|string|max:100',
-            'utm_campaign'  => 'nullable|string|max:100',
-            'utm_content'   => 'nullable|string|max:100',
-            'utm_term'      => 'nullable|string|max:100',
-            'ym_client_id'  => 'nullable|string|max:50',
+            'first_name' => 'nullable|string|max:100',
+            'contact' => 'required|string|max:255',
+            'utm_source' => 'nullable|string|max:100',
+            'utm_medium' => 'nullable|string|max:100',
+            'utm_campaign' => 'nullable|string|max:100',
+            'utm_content' => 'nullable|string|max:100',
+            'utm_term' => 'nullable|string|max:100',
+            'ym_client_id' => 'nullable|string|max:50',
         ]);
 
         // Название: если пусто или generic — сгенерируем из текста
@@ -328,37 +330,38 @@ class PublicGenerateController extends Controller
 
         // Создаём заказ
         $order = GuestOrder::create([
-            'token'         => Str::random(48),
-            'contact'       => $contactData['value'],
-            'contact_type'  => $contactData['type'],
-            'first_name'    => $request->input('first_name') ?: null,
-            'title'         => $title,
-            'lyrics'        => $request->input('lyrics'),
-            'genre'         => $request->input('genre'),
-            'artist'        => $request->input('artist'),
-            'vocal_gender'  => $request->input('vocal_gender', 'random'),
-            'voice_id'      => $request->input('voice_id'),
-            'language'      => $request->input('language', 'ru'),
-            'occasion'      => $request->input('occasion'),
-            'description'   => $request->input('description'),
-            'amount'        => $price,
-            'status'        => 'pending_payment',
-            'ip'            => $request->ip(),
-            'user_agent'    => substr($request->userAgent() ?? '', 0, 500),
-            'utm_source'    => $request->input('utm_source'),
-            'utm_medium'    => $request->input('utm_medium'),
-            'utm_campaign'  => $request->input('utm_campaign'),
-            'utm_content'   => $request->input('utm_content'),
-            'utm_term'      => $request->input('utm_term'),
-            'ym_client_id'  => $request->input('ym_client_id'),
+            'token' => Str::random(48),
+            'contact' => $contactData['value'],
+            'contact_type' => $contactData['type'],
+            'first_name' => $request->input('first_name') ?: null,
+            'title' => $title,
+            'lyrics' => $request->input('lyrics'),
+            'genre' => $request->input('genre'),
+            'artist' => $request->input('artist'),
+            'vocal_gender' => $request->input('vocal_gender', 'random'),
+            'voice_id' => $request->input('voice_id'),
+            'language' => $request->input('language', 'ru'),
+            'occasion' => $request->input('occasion'),
+            'description' => $request->input('description'),
+            'amount' => $price,
+            'status' => 'pending_payment',
+            'ip' => $request->ip(),
+            'user_agent' => substr($request->userAgent() ?? '', 0, 500),
+            'utm_source' => $request->input('utm_source'),
+            'utm_medium' => $request->input('utm_medium'),
+            'utm_campaign' => $request->input('utm_campaign'),
+            'utm_content' => $request->input('utm_content'),
+            'utm_term' => $request->input('utm_term'),
+            'ym_client_id' => $request->input('ym_client_id'),
             'user_id' => $authUser?->user_id,
         ]);
 
         // Создаём платёж в ЮKassa
         $paymentResult = $this->createYooKassaPayment($order);
 
-        if (!$paymentResult['success']) {
+        if (! $paymentResult['success']) {
             $order->update(['status' => 'failed']);
+
             return response()->json([
                 'error' => $paymentResult['error'] ?? 'Ошибка создания платежа',
             ], 500);
@@ -387,13 +390,13 @@ class PublicGenerateController extends Controller
     {
         $token = $request->query('order');
 
-        if (!$token) {
+        if (! $token) {
             return redirect()->route('public.generate');
         }
 
         $order = GuestOrder::where('token', $token)->first();
 
-        if (!$order) {
+        if (! $order) {
             return redirect()->route('public.generate')->with('error', 'Заказ не найден');
         }
 
@@ -416,6 +419,7 @@ class PublicGenerateController extends Controller
             if (filter_var($contact, FILTER_VALIDATE_EMAIL)) {
                 return ['type' => 'email', 'value' => mb_strtolower($contact)];
             }
+
             return ['error' => 'Некорректный email'];
         }
 
@@ -423,13 +427,13 @@ class PublicGenerateController extends Controller
         $digits = preg_replace('/\D/', '', $contact);
         if (strlen($digits) === 11) {
             if (str_starts_with($digits, '8')) {
-                $digits = '7' . substr($digits, 1);
+                $digits = '7'.substr($digits, 1);
             }
         } elseif (strlen($digits) === 10) {
-            $digits = '7' . $digits;
+            $digits = '7'.$digits;
         }
 
-        if (strlen($digits) !== 11 || !str_starts_with($digits, '7')) {
+        if (strlen($digits) !== 11 || ! str_starts_with($digits, '7')) {
             return ['error' => 'Введите корректный email или телефон'];
         }
 
@@ -444,7 +448,7 @@ class PublicGenerateController extends Controller
         $shopId = config('yookassa.shop_id');
         $secretKey = config('yookassa.secret_key');
 
-        if (!$shopId || !$secretKey) {
+        if (! $shopId || ! $secretKey) {
             return ['success' => false, 'error' => 'ЮKassa не настроена'];
         }
 
@@ -494,11 +498,12 @@ class PublicGenerateController extends Controller
                     ],
                 ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::error('YooKassa guest payment error', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
+
                 return ['success' => false, 'error' => 'Платёжная система недоступна. Попробуй позже.'];
             }
 
@@ -511,7 +516,8 @@ class PublicGenerateController extends Controller
             ];
 
         } catch (\Exception $e) {
-            Log::error('YooKassa guest exception: ' . $e->getMessage());
+            Log::error('YooKassa guest exception: '.$e->getMessage());
+
             return ['success' => false, 'error' => 'Ошибка платёжной системы'];
         }
     }
@@ -537,14 +543,15 @@ class PublicGenerateController extends Controller
         $orderToken = $payment['metadata']['order_token'] ?? null;
 
         // Если это не наш гостевой заказ (например, оплата из ЛК) — пропускаем
-        if (!$orderToken) {
+        if (! $orderToken) {
             return response()->json(['ok' => true]);
         }
 
         $order = GuestOrder::where('token', $orderToken)->first();
 
-        if (!$order) {
+        if (! $order) {
             Log::warning('Webhook: guest order not found', ['token' => $orderToken]);
+
             return response()->json(['ok' => true]); // всё равно 200, чтобы ЮKassa не ретраила
         }
 
@@ -563,16 +570,16 @@ class PublicGenerateController extends Controller
     ) {
         $token = $request->query('token');
 
-        if (!$token) {
+        if (! $token) {
             return response()->json(['error' => 'No token'], 400);
         }
 
         $order = GuestOrder::where('token', $token)->first();
-        if (!$order) {
+        if (! $order) {
             return response()->json(['error' => 'Order not found'], 404);
         }
 
-        $wasNotPaid = !$order->isPaid();
+        $wasNotPaid = ! $order->isPaid();
 
         if ($order->status === 'pending_payment' && $order->payment_id) {
             $this->refreshPaymentFromYooKassa($order, $orderService);
@@ -589,7 +596,7 @@ class PublicGenerateController extends Controller
 
         // Только что оплачено — выдаём одноразовый login_token (5 минут)
         // Только если у этого браузера ещё нет cookie tg_session
-        if ($wasNotPaid && $order->isPaid() && $order->user_id && !$request->cookie('tg_session')) {
+        if ($wasNotPaid && $order->isPaid() && $order->user_id && ! $request->cookie('tg_session')) {
             $loginToken = \Illuminate\Support\Str::random(64);
             $order->update([
                 'login_token' => hash('sha256', $loginToken),
@@ -615,7 +622,7 @@ class PublicGenerateController extends Controller
         $shopId = config('yookassa.shop_id');
         $secretKey = config('yookassa.secret_key');
 
-        if (!$shopId || !$secretKey || !$order->payment_id) {
+        if (! $shopId || ! $secretKey || ! $order->payment_id) {
             return;
         }
 
@@ -624,11 +631,12 @@ class PublicGenerateController extends Controller
                 ->timeout(10)
                 ->get("https://api.yookassa.ru/v3/payments/{$order->payment_id}");
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::warning('YooKassa status check failed', [
                     'order_id' => $order->id,
                     'status' => $response->status(),
                 ]);
+
                 return;
             }
 
@@ -659,17 +667,17 @@ class PublicGenerateController extends Controller
     ) {
         $token = $request->query('token') ?: $request->input('token');
 
-        if (!$token) {
+        if (! $token) {
             return response()->json(['error' => 'No token'], 400);
         }
 
         $order = GuestOrder::where('token', $token)->first();
 
-        if (!$order) {
+        if (! $order) {
             return response()->json(['error' => 'Order not found'], 404);
         }
 
-        if (!$order->isPaid()) {
+        if (! $order->isPaid()) {
             return response()->json(['error' => 'Order not paid'], 402);
         }
 
@@ -678,30 +686,59 @@ class PublicGenerateController extends Controller
         return response()->json($result);
     }
 
-    public function songStatus(Request $request)
-    {
-        $token = $request->query('token');
+    /**
+     * API: Повторный запуск генерации после ошибки (баланс уже возвращён)
+     */
+    public function retryGeneration(
+        Request $request,
+        GuestOrderService $orderService,
+        SunoService $sunoService
+    ) {
+        $token = $request->query('token') ?: $request->input('token');
 
-        if (!$token) {
+        if (! $token) {
             return response()->json(['error' => 'No token'], 400);
         }
 
         $order = GuestOrder::where('token', $token)->first();
 
-        if (!$order || !$order->song_id) {
+        if (! $order) {
+            return response()->json(['error' => 'Order not found'], 404);
+        }
+
+        if (! $order->isPaid()) {
+            return response()->json(['error' => 'Order not paid'], 402);
+        }
+
+        $result = $orderService->retryGeneration($order, $sunoService);
+
+        return response()->json($result);
+    }
+
+    public function songStatus(Request $request)
+    {
+        $token = $request->query('token');
+
+        if (! $token) {
+            return response()->json(['error' => 'No token'], 400);
+        }
+
+        $order = GuestOrder::where('token', $token)->first();
+
+        if (! $order || ! $order->song_id) {
             return response()->json(['status' => 'not_started']);
         }
 
         $song = Song::find($order->song_id);
-        if (!$song) {
+        if (! $song) {
             return response()->json(['status' => 'not_started']);
         }
 
         // Готово = есть оба файла
-        $isReady = !empty($song->file_path) && !empty($song->file_path_2);
+        $isReady = ! empty($song->file_path) && ! empty($song->file_path_2);
 
         // Частичная готовность (один файл уже скачан — редкий случай)
-        $isPartial = !empty($song->file_path) || !empty($song->file_path_2);
+        $isPartial = ! empty($song->file_path) || ! empty($song->file_path_2);
 
         if ($isReady && $order->status !== 'completed') {
             $order->update(['status' => 'completed']);
@@ -733,19 +770,19 @@ class PublicGenerateController extends Controller
     {
         $token = $request->query('token');
 
-        if (!$token) {
+        if (! $token) {
             return response()->json(['error' => 'No token'], 400);
         }
 
         $order = GuestOrder::where('token', $token)->first();
-        if (!$order || !$order->isPaid()) {
+        if (! $order || ! $order->isPaid()) {
             return response()->json(['has_credentials' => false]);
         }
 
         $cacheKey = "guest_credentials:{$order->token}";
         $creds = Cache::get($cacheKey);
 
-        if (!$creds) {
+        if (! $creds) {
             // Уже показано или юзер существовал до оплаты
             return response()->json([
                 'has_credentials' => false,
@@ -776,20 +813,20 @@ class PublicGenerateController extends Controller
         $orderToken = $request->input('order_token');
         $loginToken = $request->input('login_token');
 
-        if (!$orderToken || !$loginToken) {
+        if (! $orderToken || ! $loginToken) {
             return response()->json(['ok' => false, 'reason' => 'no_token'], 400);
         }
 
         $order = GuestOrder::where('token', $orderToken)->first();
-        if (!$order || !$order->isPaid() || !$order->user_id) {
+        if (! $order || ! $order->isPaid() || ! $order->user_id) {
             return response()->json(['ok' => false, 'reason' => 'not_paid'], 403);
         }
 
         // Проверка login_token: хеш совпадает + не истёк
         if (
             empty($order->login_token) ||
-            !hash_equals($order->login_token, hash('sha256', $loginToken)) ||
-            !$order->login_token_expires_at ||
+            ! hash_equals($order->login_token, hash('sha256', $loginToken)) ||
+            ! $order->login_token_expires_at ||
             $order->login_token_expires_at->isPast()
         ) {
             return response()->json(['ok' => false, 'reason' => 'invalid_or_expired_token'], 403);
@@ -802,7 +839,7 @@ class PublicGenerateController extends Controller
         ]);
 
         $user = \App\Models\User::where('user_id', $order->user_id)->first();
-        if (!$user) {
+        if (! $user) {
             return response()->json(['ok' => false, 'reason' => 'no_user'], 404);
         }
 
@@ -843,7 +880,7 @@ class PublicGenerateController extends Controller
     ) {
         $authUser = $request->attributes->get('auth_user');
 
-        if (!$authUser) {
+        if (! $authUser) {
             return response()->json(['error' => 'Требуется авторизация'], 401);
         }
 
@@ -852,15 +889,15 @@ class PublicGenerateController extends Controller
         }
 
         $request->validate([
-            'title'         => 'nullable|string|max:255',
-            'lyrics'        => 'required|string|max:10000',
-            'genre'         => 'required|string|max:255',
-            'artist'        => 'nullable|string|max:255',
-            'vocal_gender'  => 'sometimes|nullable|string|in:m,f,duet,random',
-            'voice_id'      => 'nullable|string|max:255',
-            'language'      => 'required|string|in:ru,en,de,es,fr,it',
-            'occasion'      => 'nullable|string|max:500',
-            'description'   => 'nullable|string|max:10000',
+            'title' => 'nullable|string|max:255',
+            'lyrics' => 'required|string|max:10000',
+            'genre' => 'required|string|max:255',
+            'artist' => 'nullable|string|max:255',
+            'vocal_gender' => 'sometimes|nullable|string|in:m,f,duet,random',
+            'voice_id' => 'nullable|string|max:255',
+            'language' => 'required|string|in:ru,en,de,es,fr,it',
+            'occasion' => 'nullable|string|max:500',
+            'description' => 'nullable|string|max:10000',
         ]);
 
         $title = $lyricsService->ensureTitle(
@@ -870,32 +907,32 @@ class PublicGenerateController extends Controller
 
         // Создаём "заказ" сразу в статусе paid — для единого пайплайна
         $order = GuestOrder::create([
-            'token'         => \Illuminate\Support\Str::random(48),
-            'contact'       => $authUser->email ?? $authUser->contact ?? "user_{$authUser->user_id}",
-            'contact_type'  => filter_var($authUser->email ?? '', FILTER_VALIDATE_EMAIL) ? 'email' : 'phone',
-            'first_name'    => $authUser->first_name,
-            'title'         => $title,
-            'lyrics'        => $request->input('lyrics'),
-            'genre'         => $request->input('genre'),
-            'artist'        => $request->input('artist'),
-            'vocal_gender'  => $request->input('vocal_gender', 'random'),
-            'voice_id'      => $request->input('voice_id'),
-            'language'      => $request->input('language', 'ru'),
-            'occasion'      => $request->input('occasion'),
-            'description'   => $request->input('description'),
-            'amount'        => 0, // бесплатно — баланс
-            'status'        => 'paid',
-            'user_id'       => $authUser->user_id,
-            'paid_at'       => now(),
-            'ip'            => $request->ip(),
-            'user_agent'    => substr($request->userAgent() ?? '', 0, 500),
-            'utm_source'    => 'balance',
+            'token' => \Illuminate\Support\Str::random(48),
+            'contact' => $authUser->email ?? $authUser->contact ?? "user_{$authUser->user_id}",
+            'contact_type' => filter_var($authUser->email ?? '', FILTER_VALIDATE_EMAIL) ? 'email' : 'phone',
+            'first_name' => $authUser->first_name,
+            'title' => $title,
+            'lyrics' => $request->input('lyrics'),
+            'genre' => $request->input('genre'),
+            'artist' => $request->input('artist'),
+            'vocal_gender' => $request->input('vocal_gender', 'random'),
+            'voice_id' => $request->input('voice_id'),
+            'language' => $request->input('language', 'ru'),
+            'occasion' => $request->input('occasion'),
+            'description' => $request->input('description'),
+            'amount' => 0, // бесплатно — баланс
+            'status' => 'paid',
+            'user_id' => $authUser->user_id,
+            'paid_at' => now(),
+            'ip' => $request->ip(),
+            'user_agent' => substr($request->userAgent() ?? '', 0, 500),
+            'utm_source' => 'balance',
         ]);
 
         // Запускаем генерацию немедленно (внутри списывается 1 с баланса)
         $result = $orderService->startGeneration($order, $sunoService);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json([
                 'error' => $result['error'] ?? 'Ошибка запуска генерации',
             ], 500);
@@ -914,14 +951,13 @@ class PublicGenerateController extends Controller
         ]);
     }
 
-
     public function prepareUserLyrics(
         Request $request,
         LyricsGeneratorService $lyricsService
     ) {
         $request->headers->set('Accept', 'application/json');
 
-        $key = 'public-prepare:' . $request->ip();
+        $key = 'public-prepare:'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, 30)) {
             return response()->json(['error' => 'Слишком много запросов. Попробуй через час.'], 429);
         }
@@ -929,7 +965,7 @@ class PublicGenerateController extends Controller
 
         $request->validate([
             'lyrics' => 'required|string|max:20000',
-            'title'  => 'nullable|string|max:255',
+            'title' => 'nullable|string|max:255',
         ]);
 
         $lyrics = trim($request->input('lyrics'));
@@ -955,7 +991,7 @@ class PublicGenerateController extends Controller
      */
     public function voiceUpload(Request $request)
     {
-        $key = 'public-voice-upload:' . $request->ip();
+        $key = 'public-voice-upload:'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, 20)) {
             return response()->json(['error' => 'Слишком много загрузок. Попробуй позже.'], 429);
         }
@@ -967,14 +1003,14 @@ class PublicGenerateController extends Controller
 
         $file = $request->file('audio');
         $dir = public_path('uploads/voices');
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
-        $name = time() . '-' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $name = time().'-'.Str::random(8).'.'.$file->getClientOriginalExtension();
         $file->move($dir, $name);
 
-        $url = 'https://narepite.site/uploads/voices/' . $name;
+        $url = 'https://narepite.site/uploads/voices/'.$name;
 
         return response()->json(['success' => true, 'url' => $url]);
     }
@@ -984,7 +1020,7 @@ class PublicGenerateController extends Controller
      */
     public function voiceCreate(Request $request, VoiceService $voiceService)
     {
-        $key = 'public-voice-create:' . $request->ip();
+        $key = 'public-voice-create:'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, 10)) {
             return response()->json(['error' => 'Слишком много попыток. Попробуй через час.'], 429);
         }
@@ -992,9 +1028,9 @@ class PublicGenerateController extends Controller
 
         $request->validate([
             'source_audio_url' => 'required|string|url|max:500',
-            'vocal_start'      => 'required|integer|min:0',
-            'vocal_end'        => 'required|integer|min:1',
-            'language'         => 'nullable|string|max:5',
+            'vocal_start' => 'required|integer|min:0',
+            'vocal_end' => 'required|integer|min:1',
+            'language' => 'nullable|string|max:5',
         ]);
 
         $result = $voiceService->requestVerifyPhrase(
@@ -1004,7 +1040,7 @@ class PublicGenerateController extends Controller
             $request->input('language', 'ru')
         );
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json(['error' => $result['error'] ?? 'Ошибка'], 400);
         }
 
@@ -1017,7 +1053,7 @@ class PublicGenerateController extends Controller
     public function voicePhrase(Request $request, VoiceService $voiceService)
     {
         $taskId = $request->query('task_id');
-        if (!$taskId) {
+        if (! $taskId) {
             return response()->json(['error' => 'No task_id'], 400);
         }
 
@@ -1038,15 +1074,15 @@ class PublicGenerateController extends Controller
      */
     public function voiceGenerate(Request $request, VoiceService $voiceService)
     {
-        $key = 'public-voice-generate:' . $request->ip();
+        $key = 'public-voice-generate:'.$request->ip();
         if (RateLimiter::tooManyAttempts($key, 10)) {
             return response()->json(['error' => 'Слишком много попыток. Попробуй через час.'], 429);
         }
         RateLimiter::hit($key, 3600);
 
         $request->validate([
-            'task_id'           => 'required|string|max:255',
-            'verify_audio_url'  => 'required|string|url|max:500',
+            'task_id' => 'required|string|max:255',
+            'verify_audio_url' => 'required|string|url|max:500',
         ]);
 
         $result = $voiceService->generateVoice(
@@ -1055,7 +1091,7 @@ class PublicGenerateController extends Controller
             'Мой голос'
         );
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json(['error' => $result['error'] ?? 'Ошибка'], 400);
         }
 
@@ -1068,13 +1104,13 @@ class PublicGenerateController extends Controller
     public function voiceStatus(Request $request, VoiceService $voiceService)
     {
         $taskId = $request->query('task_id');
-        if (!$taskId) {
+        if (! $taskId) {
             return response()->json(['error' => 'No task_id'], 400);
         }
 
         $result = $voiceService->getRecordInfo($taskId);
 
-        if ($result['status'] === 'ready' && !empty($result['voice_id'])) {
+        if ($result['status'] === 'ready' && ! empty($result['voice_id'])) {
             return response()->json(['status' => 'ready', 'voice_id' => $result['voice_id']]);
         }
         if ($result['status'] === 'failed') {

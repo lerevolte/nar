@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Payment;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -11,8 +12,11 @@ use Illuminate\Support\Str;
 class YooKassaService
 {
     private string $shopId;
+
     private string $secretKey;
+
     private string $returnUrl;
+
     private string $apiUrl = 'https://api.yookassa.ru/v3';
 
     public function __construct()
@@ -35,13 +39,13 @@ class YooKassaService
      */
     public function createPayment(int $userId, int $songsCount, ?string $contact = null): array
     {
-        if (!$this->shopId || !$this->secretKey) {
+        if (! $this->shopId || ! $this->secretKey) {
             return ['success' => false, 'error' => 'ЮKassa не настроена'];
         }
 
         $packages = self::getPackages();
-        
-        if (!isset($packages[$songsCount])) {
+
+        if (! isset($packages[$songsCount])) {
             return ['success' => false, 'error' => 'Неверный пакет'];
         }
 
@@ -50,7 +54,7 @@ class YooKassaService
 
         // Подготовка данных клиента
         $customerData = $this->prepareCustomerData($contact);
-        
+
         if (isset($customerData['error'])) {
             return ['success' => false, 'error' => $customerData['error']];
         }
@@ -97,11 +101,12 @@ class YooKassaService
                     ],
                 ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::error('YooKassa create payment error', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
+
                 return ['success' => false, 'error' => 'Ошибка создания платежа'];
             }
 
@@ -131,7 +136,8 @@ class YooKassaService
             ];
 
         } catch (\Exception $e) {
-            Log::error('YooKassa exception: ' . $e->getMessage());
+            Log::error('YooKassa exception: '.$e->getMessage());
+
             return ['success' => false, 'error' => 'Ошибка платёжной системы'];
         }
     }
@@ -146,7 +152,7 @@ class YooKassaService
                 ->timeout(10)
                 ->get("{$this->apiUrl}/payments/{$paymentId}");
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return ['status' => 'error', 'error' => 'Не удалось проверить платёж'];
             }
 
@@ -160,7 +166,8 @@ class YooKassaService
             ];
 
         } catch (\Exception $e) {
-            Log::error('YooKassa check error: ' . $e->getMessage());
+            Log::error('YooKassa check error: '.$e->getMessage());
+
             return ['status' => 'error', 'error' => $e->getMessage()];
         }
     }
@@ -172,17 +179,19 @@ class YooKassaService
     {
         $payment = Payment::where('payment_id', $paymentId)->first();
 
-        if (!$payment) {
+        if (! $payment) {
             Log::warning('Payment not found', ['payment_id' => $paymentId]);
+
             return false;
         }
 
         if ($payment->status === 'succeeded') {
             Log::info('Payment already processed', ['payment_id' => $paymentId]);
+
             return true;
         }
 
-        // Проверяем статус в ЮKassa
+        // Проверяем статус в ЮKassa (авторитетный источник — защита от подделки вебхука)
         $result = $this->checkPayment($paymentId);
 
         if ($result['status'] !== 'succeeded') {
@@ -190,29 +199,67 @@ class YooKassaService
                 'payment_id' => $paymentId,
                 'status' => $result['status'],
             ]);
+
             return false;
         }
 
-        // Начисляем песни
-        $user = User::where('user_id', $payment->user_id)->first();
-        
-        if (!$user) {
-            Log::error('User not found for payment', [
+        // Начисляем песни атомарно, с блокировкой строки платежа (защита от гонок/дублей)
+        $credited = false;
+
+        try {
+            DB::transaction(function () use ($paymentId, &$credited) {
+                $payment = Payment::where('payment_id', $paymentId)->lockForUpdate()->first();
+
+                // Повторная проверка под блокировкой — другой запрос мог успеть начислить
+                if (! $payment || $payment->status === 'succeeded') {
+                    return;
+                }
+
+                $user = User::where('user_id', $payment->user_id)->lockForUpdate()->first();
+
+                if (! $user) {
+                    throw new \RuntimeException('User not found for payment '.$paymentId);
+                }
+
+                $user->increment('balance', $payment->songs_count);
+                $payment->update(['status' => 'succeeded']);
+                $credited = true;
+            });
+        } catch (\Exception $e) {
+            Log::error('processSuccessfulPayment transaction failed', [
                 'payment_id' => $paymentId,
                 'user_id' => $payment->user_id,
+                'error' => $e->getMessage(),
             ]);
-            return false;
+
+            return false; // вернём ошибку → ЮKassa повторит доставку
         }
 
-        $user->increment('balance', $payment->songs_count);
-        $payment->update(['status' => 'succeeded']);
+        if ($credited) {
+            $payment->refresh();
+            $user = User::where('user_id', $payment->user_id)->first();
 
-        Log::info('Payment processed successfully', [
-            'payment_id' => $paymentId,
-            'user_id' => $payment->user_id,
-            'songs_added' => $payment->songs_count,
-            'new_balance' => $user->fresh()->balance,
-        ]);
+            Log::info('Payment processed successfully', [
+                'payment_id' => $paymentId,
+                'user_id' => $payment->user_id,
+                'songs_added' => $payment->songs_count,
+                'new_balance' => $user?->balance,
+            ]);
+
+            // Уведомление админам — не должно ломать начисление
+            try {
+                app(TelegramNotificationService::class)->notifyAdminsPayment([
+                    'amount' => $payment->amount,
+                    'songs_count' => $payment->songs_count,
+                    'contact' => $user?->contact ?? $user?->email,
+                    'context' => $payment->context,
+                    'user_id' => $payment->user_id,
+                    'payment_id' => $paymentId,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Admin payment notification failed: '.$e->getMessage());
+            }
+        }
 
         return true;
     }
@@ -222,7 +269,7 @@ class YooKassaService
      */
     private function prepareCustomerData(?string $contact): array
     {
-        if (!$contact) {
+        if (! $contact) {
             return ['email' => 'customer@narepite.site'];
         }
 
@@ -251,13 +298,13 @@ class YooKassaService
 
         if (strlen($digits) === 11) {
             if (str_starts_with($digits, '8')) {
-                $digits = '7' . substr($digits, 1);
+                $digits = '7'.substr($digits, 1);
             }
         } elseif (strlen($digits) === 10) {
-            $digits = '7' . $digits;
+            $digits = '7'.$digits;
         }
 
-        if (strlen($digits) !== 11 || !str_starts_with($digits, '7')) {
+        if (strlen($digits) !== 11 || ! str_starts_with($digits, '7')) {
             return null;
         }
 

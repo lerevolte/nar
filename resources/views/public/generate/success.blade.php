@@ -444,7 +444,8 @@
             <div class="pgs-error">
                 Напиши нам на <a href="mailto:help@narepite.site" style="color:#7c3aed;">help@narepite.site</a>, укажи номер заказа <code>{{ $order->token }}</code>.
             </div>
-            <a href="/create-song" class="pgs-btn pgs-btn-primary" style="margin-top:12px;">← Попробовать снова</a>
+            <button id="btn-retry-generation" class="pgs-btn pgs-btn-primary" style="margin-top:12px; display:none;" onclick="retryGeneration()">🔄 Повторить генерацию</button>
+            <a href="/create-song" class="pgs-btn pgs-btn-ghost" style="margin-top:12px;">← На страницу создания</a>
         </div>
 
     </div>
@@ -623,7 +624,11 @@ async function pollSongStatus() {
         }
 
         if (d.status === 'failed') {
-            showError('Ошибка генерации', 'Suno вернул ошибку. Мы создадим твою песню вручную.');
+            showError(
+                'Ошибка генерации',
+                'К сожалению, не удалось сгенерировать песню. Мы вернули 1 песню на твой баланс — можешь попробовать ещё раз.',
+                true
+            );
             return;
         }
 
@@ -701,7 +706,7 @@ function showSong(data) {
 }
 
 // ============ ОШИБКА ============
-function showError(title, msg) {
+function showError(title, msg, canRetry = false) {
     if (genMessageInterval) clearInterval(genMessageInterval);
     document.getElementById('phase-payment').style.display = 'none';
     document.getElementById('phase-generation').style.display = 'none';
@@ -709,6 +714,41 @@ function showError(title, msg) {
     document.getElementById('phase-error').style.display = 'block';
     if (title) document.getElementById('error-title').textContent = title;
     if (msg) document.getElementById('error-message').innerHTML = msg;
+
+    const retryBtn = document.getElementById('btn-retry-generation');
+    if (retryBtn) retryBtn.style.display = canRetry ? 'inline-block' : 'none';
+}
+
+// ============ ПОВТОР ГЕНЕРАЦИИ ============
+async function retryGeneration() {
+    const retryBtn = document.getElementById('btn-retry-generation');
+    if (retryBtn) { retryBtn.disabled = true; retryBtn.textContent = 'Запускаем…'; }
+
+    try {
+        const r = await fetch('/api/public-generate/retry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+            body: JSON.stringify({ token: orderToken }),
+        });
+        const d = await r.json();
+
+        if (!r.ok || !d.success) {
+            throw new Error(d.error || 'Не удалось перезапустить генерацию');
+        }
+
+        // Сброс состояния и возврат к фазе генерации
+        songPollAttempts = 0;
+        document.getElementById('phase-error').style.display = 'none';
+        document.getElementById('phase-generation').style.display = 'block';
+        generationStartTime = Date.now();
+        startProgressAnimation();
+        startMessagesRotation();
+        pollSongStatus();
+    } catch (e) {
+        showError('Не удалось повторить', e.message, true);
+    } finally {
+        if (retryBtn) { retryBtn.disabled = false; retryBtn.textContent = '🔄 Повторить генерацию'; }
+    }
 }
 
 // ============ SHARE ============

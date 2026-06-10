@@ -4,12 +4,12 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class TelegramNotificationService
 {
     protected string $botToken;
+
     protected string $apiUrl;
 
     public function __construct()
@@ -32,15 +32,61 @@ class TelegramNotificationService
 
             if ($response->successful()) {
                 Log::info("Telegram message sent to {$chatId}");
+
                 return true;
             }
 
-            Log::error("Telegram API error: " . $response->body());
+            Log::error('Telegram API error: '.$response->body());
+
             return false;
 
         } catch (\Exception $e) {
-            Log::error("Telegram send error: " . $e->getMessage());
+            Log::error('Telegram send error: '.$e->getMessage());
+
             return false;
+        }
+    }
+
+    /**
+     * Уведомить администраторов об успешной оплате.
+     *
+     * @param  array  $info  ['amount' => , 'songs_count' => , 'contact' => , 'context' => , 'user_id' => , 'payment_id' => ]
+     */
+    public function notifyAdminsPayment(array $info): void
+    {
+        $adminIds = config('telegram.admin_ids', []);
+
+        if (empty($adminIds)) {
+            return;
+        }
+
+        $lines = [
+            '💰 <b>Новая оплата</b>',
+            'Сумма: <b>'.($info['amount'] ?? '—').' ₽</b>',
+            'Песен: '.($info['songs_count'] ?? '—'),
+        ];
+
+        if (! empty($info['contact'])) {
+            $lines[] = 'Контакт: '.$info['contact'];
+        }
+        if (! empty($info['user_id'])) {
+            $lines[] = 'User ID: <code>'.$info['user_id'].'</code>';
+        }
+        if (! empty($info['context'])) {
+            $lines[] = 'Источник: '.$info['context'];
+        }
+        if (! empty($info['payment_id'])) {
+            $lines[] = 'Платёж: <code>'.$info['payment_id'].'</code>';
+        }
+
+        $message = implode("\n", $lines);
+
+        foreach ($adminIds as $adminId) {
+            try {
+                $this->sendMessage($adminId, $message);
+            } catch (\Exception $e) {
+                Log::error("notifyAdminsPayment failed for {$adminId}: ".$e->getMessage());
+            }
         }
     }
 
@@ -53,12 +99,13 @@ class TelegramNotificationService
             // Скачиваем файл во временную директорию
             $tempFile = tempnam(sys_get_temp_dir(), 'audio_');
             $audioContent = file_get_contents($audioUrl);
-            
+
             if ($audioContent === false) {
                 Log::error("Failed to download audio: {$audioUrl}");
+
                 return false;
             }
-            
+
             file_put_contents($tempFile, $audioContent);
 
             $response = Http::attach(
@@ -78,14 +125,17 @@ class TelegramNotificationService
 
             if ($response->successful()) {
                 Log::info("Telegram audio sent to {$chatId}");
+
                 return true;
             }
 
-            Log::error("Telegram audio API error: " . $response->body());
+            Log::error('Telegram audio API error: '.$response->body());
+
             return false;
 
         } catch (\Exception $e) {
-            Log::error("Telegram audio send error: " . $e->getMessage());
+            Log::error('Telegram audio send error: '.$e->getMessage());
+
             return false;
         }
     }
@@ -97,7 +147,7 @@ class TelegramNotificationService
     {
         $medals = [
             1 => '🥇',
-            2 => '🥈', 
+            2 => '🥈',
             3 => '🥉',
         ];
 
@@ -105,8 +155,8 @@ class TelegramNotificationService
 
         $message = "{$medal} <b>Поздравляем!</b>\n\n";
         $message .= "Твоя песня «<b>{$songTitle}</b>» заняла <b>{$position} место</b> в чарте «{$chartName}»!\n\n";
-        $message .= "🎁 Награда: <b>+{$songsReward}</b> " . $this->pluralize($songsReward, 'песня', 'песни', 'песен') . "\n\n";
-        $message .= "Продолжай создавать музыку! 🎵";
+        $message .= "🎁 Награда: <b>+{$songsReward}</b> ".$this->pluralize($songsReward, 'песня', 'песни', 'песен')."\n\n";
+        $message .= 'Продолжай создавать музыку! 🎵';
 
         return $this->sendMessage($userId, $message);
     }
@@ -129,18 +179,18 @@ class TelegramNotificationService
             $message .= "    👤 {$winner['author']} • ❤️ {$winner['votes']} голосов\n\n";
         }
 
-        $message .= "📊 Участвуй в новом недельном чарте!";
+        $message .= '📊 Участвуй в новом недельном чарте!';
 
         $this->sendMessage($chatId, $message);
 
         // Затем отправляем аудио каждого победителя
         foreach ($winners as $index => $winner) {
-            if (!empty($winner['audio_url'])) {
+            if (! empty($winner['audio_url'])) {
                 $medal = $medals[$index] ?? '';
                 $position = $index + 1;
-                
+
                 $caption = "{$medal} {$position} место — {$winner['votes']} голосов";
-                
+
                 $this->sendAudio(
                     $chatId,
                     $winner['audio_url'],
@@ -163,7 +213,7 @@ class TelegramNotificationService
     public function notifyChartResults(array $userIds, string $chartName, array $winners): bool
     {
         $successCount = 0;
-        
+
         foreach ($userIds as $userId) {
             if ($this->sendChartResultsWithAudio($userId, $chartName, $winners)) {
                 $successCount++;
@@ -172,7 +222,7 @@ class TelegramNotificationService
             usleep(100000); // 100ms
         }
 
-        Log::info("Chart results sent to {$successCount}/" . count($userIds) . " users", [
+        Log::info("Chart results sent to {$successCount}/".count($userIds).' users', [
             'chart' => $chartName,
         ]);
 
@@ -187,8 +237,8 @@ class TelegramNotificationService
         try {
             // Отправляем текстовое сообщение
             $message = "✅ <b>Песня готова!</b>\n";
-            $message .= "Второй вариант в подарок! 🎁";
-            
+            $message .= 'Второй вариант в подарок! 🎁';
+
             $this->sendMessage($userId, $message);
 
             // Отправляем первый вариант
@@ -216,25 +266,25 @@ class TelegramNotificationService
 
             // Отправляем баланс
             usleep(300000); // 300ms задержка
-            $balanceMessage = "💰 Твой баланс: {$balance} " . $this->pluralize($balance, 'песня', 'песни', 'песен');
+            $balanceMessage = "💰 Твой баланс: {$balance} ".$this->pluralize($balance, 'песня', 'песни', 'песен');
             $this->sendMessage($userId, $balanceMessage);
 
             Log::info("Song ready notification sent to user {$userId}", [
                 'title' => $title,
-                'balance' => $balance
+                'balance' => $balance,
             ]);
 
             return true;
 
         } catch (\Exception $e) {
-            Log::error("Failed to send song ready notification: " . $e->getMessage(), [
+            Log::error('Failed to send song ready notification: '.$e->getMessage(), [
                 'user_id' => $userId,
-                'title' => $title
+                'title' => $title,
             ]);
+
             return false;
         }
     }
-
 
     /**
      * Отправить аудио с повторной попыткой при ошибке
@@ -242,18 +292,19 @@ class TelegramNotificationService
     protected function sendAudioWithRetry(int|string $chatId, string $audioUrl, string $caption, string $title, string $performer, int $maxRetries = 2): bool
     {
         // Формируем имя файла для скачивания
-        $filename = Str::slug($title, '_') . '.mp3';
-        
+        $filename = Str::slug($title, '_').'.mp3';
+
         // Сразу скачиваем и загружаем файл — так title и performer точно применятся
         Log::info("Downloading and uploading audio file for {$chatId}", ['title' => $title]);
-        
+
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
             try {
                 $audioContent = Http::timeout(60)->get($audioUrl)->body();
-                
+
                 if (strlen($audioContent) < 1000) {
                     Log::error("Downloaded audio file too small, attempt {$attempt}");
                     usleep(500000);
+
                     continue;
                 }
 
@@ -269,21 +320,23 @@ class TelegramNotificationService
 
                 if ($response->successful()) {
                     Log::info("Telegram audio uploaded successfully to {$chatId}", ['title' => $title]);
+
                     return true;
                 }
 
-                Log::warning("Telegram audio upload attempt {$attempt} failed: " . $response->body());
+                Log::warning("Telegram audio upload attempt {$attempt} failed: ".$response->body());
 
             } catch (\Exception $e) {
-                Log::warning("Telegram audio upload attempt {$attempt} error: " . $e->getMessage());
+                Log::warning("Telegram audio upload attempt {$attempt} error: ".$e->getMessage());
             }
 
             usleep(500000); // 500ms между попытками
         }
 
         // Fallback — отправляем ссылку
-        Log::error("All attempts failed, sending link as fallback");
+        Log::error('All attempts failed, sending link as fallback');
         $this->sendMessage($chatId, "🎵 {$title}: {$audioUrl}");
+
         return false;
     }
 
@@ -299,15 +352,17 @@ class TelegramNotificationService
                 'limit' => 1,
             ]);
 
-            if (!$response->successful()) {
-                Log::warning("Failed to get profile photos for user {$userId}: " . $response->body());
+            if (! $response->successful()) {
+                Log::warning("Failed to get profile photos for user {$userId}: ".$response->body());
+
                 return null;
             }
 
             $data = $response->json();
-            
+
             if (empty($data['result']['photos'][0])) {
                 Log::info("No profile photo for user {$userId}");
+
                 return null;
             }
 
@@ -321,26 +376,29 @@ class TelegramNotificationService
                 'file_id' => $fileId,
             ]);
 
-            if (!$fileResponse->successful()) {
-                Log::warning("Failed to get file path for user {$userId}: " . $fileResponse->body());
+            if (! $fileResponse->successful()) {
+                Log::warning("Failed to get file path for user {$userId}: ".$fileResponse->body());
+
                 return null;
             }
 
             $fileData = $fileResponse->json();
             $filePath = $fileData['result']['file_path'] ?? null;
 
-            if (!$filePath) {
+            if (! $filePath) {
                 return null;
             }
 
             // Формируем URL для скачивания
             $avatarUrl = "https://api.telegram.org/file/bot{$this->botToken}/{$filePath}";
-            
+
             Log::info("Got avatar URL for user {$userId}");
+
             return $avatarUrl;
 
         } catch (\Exception $e) {
-            Log::error("Error getting avatar for user {$userId}: " . $e->getMessage());
+            Log::error("Error getting avatar for user {$userId}: ".$e->getMessage());
+
             return null;
         }
     }
@@ -353,9 +411,15 @@ class TelegramNotificationService
         $n = abs($number) % 100;
         $n1 = $n % 10;
 
-        if ($n > 10 && $n < 20) return $many;
-        if ($n1 > 1 && $n1 < 5) return $few;
-        if ($n1 == 1) return $one;
+        if ($n > 10 && $n < 20) {
+            return $many;
+        }
+        if ($n1 > 1 && $n1 < 5) {
+            return $few;
+        }
+        if ($n1 == 1) {
+            return $one;
+        }
 
         return $many;
     }

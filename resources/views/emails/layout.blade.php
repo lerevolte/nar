@@ -23,7 +23,7 @@
                     <tr>
                         <td style="padding:20px 32px;border-top:1px solid #edf2f7;text-align:center;color:#a0aec0;font-size:12px;">
                             narepite.com — генерация песен с помощью ИИ<br>
-                            Нужна помощь? Напиши на <a href="mailto:help@narepite.site" style="color:#7c3aed;">help@narepite.site</a>
+                            Нужна помощь? Напиши на <a href="mailto:support@narepite.com" style="color:#7c3aed;">support@narepite.com</a>
                         </td>
                     </tr>
                 </table>

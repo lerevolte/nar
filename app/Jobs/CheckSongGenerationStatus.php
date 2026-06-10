@@ -14,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -175,16 +176,21 @@ class CheckSongGenerationStatus implements ShouldQueue
             Log::error('Refund telegram notify failed: '.$e->getMessage());
         }
 
-        // Письмо об ошибке (пользователь мог уйти с сайта)
+        // Письмо об ошибке (пользователь мог уйти с сайта) — с доступами в ЛК
         if ($user && ! empty($user->email)) {
             try {
                 $retryUrl = $order
-                    ? rtrim((string) config('app.url'), '/').'/create-song/success?token='.$order->token
+                    ? rtrim((string) config('app.url'), '/').'/create-song/success?order='.$order->token
                     : null;
+
+                // Если аккаунт только что создан — пароль ещё в кеше (15 мин), покажем его в письме.
+                $password = $order ? (Cache::get("guest_credentials:{$order->token}")['password'] ?? null) : null;
 
                 Mail::to($user->email)->queue(new SongFailedMail(
                     title: (string) $song->title,
                     retryUrl: $retryUrl,
+                    login: $user->email,
+                    password: $password,
                 ));
             } catch (\Exception $e) {
                 Log::error('SongFailedMail failed: '.$e->getMessage());

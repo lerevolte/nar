@@ -82,7 +82,7 @@ class TestToolsController extends Controller
             'ok' => true,
             'message' => 'Заказ завершён без оплаты. Открой страницу успеха — пойдёт реальная генерация и письма.',
             'generation' => $gen,
-            'success_url' => route('public.generate.success', ['token' => $order->token]),
+            'success_url' => route('public.generate.success', ['order' => $order->token]),
         ]);
     }
 
@@ -138,10 +138,10 @@ class TestToolsController extends Controller
         $mailSent = false;
         if ($email) {
             try {
-                $retryUrl = route('public.generate.success', ['token' => $order->token]);
-                Mail::to($email)->send(new SongFailedMail((string) $song->title, $retryUrl));
+                $retryUrl = route('public.generate.success', ['order' => $order->token]);
+                Mail::to($email)->sendNow(new SongFailedMail((string) $song->title, $retryUrl, $email));
                 $mailSent = true;
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 Log::error('Test SongFailedMail failed: '.$e->getMessage());
 
                 return response()->json(['ok' => false, 'error' => 'Письмо не отправилось: '.$e->getMessage()], 500);
@@ -151,7 +151,7 @@ class TestToolsController extends Controller
         return response()->json([
             'ok' => true,
             'message' => 'Сгенерирована ошибка: 1 песня возвращена на баланс'.($mailSent ? ', письмо отправлено' : '').'. Открой страницу — увидишь кнопку «Повторить».',
-            'success_url' => route('public.generate.success', ['token' => $order->token]),
+            'success_url' => route('public.generate.success', ['order' => $order->token]),
         ]);
     }
 
@@ -173,16 +173,18 @@ class TestToolsController extends Controller
         $letters = [
             'Доступы (новый юзер)' => new AccountCredentialsMail($email, 'Music1234', 'Тестовая песня'),
             'Песня готова' => new SongReadyMail('Тестовая песня', $base.'/music/test1.mp3', $base.'/music/test2.mp3'),
-            'Ошибка генерации' => new SongFailedMail('Тестовая песня', $base.'/create-song'),
+            'Ошибка генерации' => new SongFailedMail('Тестовая песня', $base.'/create-song', $email, 'Music1234'),
             'Сброс пароля' => new ResetPasswordMail($base.'/reset-password/test-token?email='.urlencode($email)),
         ];
 
         $results = [];
         foreach ($letters as $name => $mailable) {
             try {
-                Mail::to($email)->send($mailable);
+                // sendNow — отправить синхронно, минуя очередь (письма реализуют ShouldQueue),
+                // чтобы SMTP-ошибка всплыла сразу здесь, а не в воркере очереди.
+                Mail::to($email)->sendNow($mailable);
                 $results[$name] = 'отправлено';
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $results[$name] = 'ОШИБКА: '.$e->getMessage();
             }
         }

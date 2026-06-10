@@ -16,10 +16,14 @@ class SongFailedMail extends Mailable implements ShouldQueue
     /**
      * @param  string  $title  Название песни
      * @param  string|null  $retryUrl  Ссылка для повторной генерации (если есть)
+     * @param  string|null  $login  Логин (email) для входа в ЛК
+     * @param  string|null  $password  Пароль в открытом виде (только если аккаунт только что создан)
      */
     public function __construct(
         public string $title,
-        public ?string $retryUrl = null
+        public ?string $retryUrl = null,
+        public ?string $login = null,
+        public ?string $password = null
     ) {}
 
     public function envelope(): Envelope
@@ -31,12 +35,17 @@ class SongFailedMail extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
+        $base = rtrim((string) config('app.url'), '/');
+
         return new Content(
             view: 'emails.song-failed',
             with: [
                 'title' => $this->title,
                 'retryUrl' => $this->retryUrl,
-                'cabinetUrl' => rtrim((string) config('app.url'), '/').'/login',
+                'login' => $this->login,
+                'password' => $this->password,
+                'loginUrl' => $base.'/login',
+                'resetUrl' => $base.'/forgot-password',
             ],
         );
     }

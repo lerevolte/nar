@@ -442,7 +442,7 @@
                 Не удалось сгенерировать песню.
             </p>
             <div class="pgs-error">
-                Напиши нам на <a href="mailto:help@narepite.site" style="color:#7c3aed;">help@narepite.site</a>, укажи номер заказа <code>{{ $order->token }}</code>.
+                Напиши нам на <a href="mailto:support@narepite.com" style="color:#7c3aed;">support@narepite.com</a>, укажи номер заказа <code>{{ $order->token }}</code>.
             </div>
             <button id="btn-retry-generation" class="pgs-btn pgs-btn-primary" style="margin-top:12px; display:none;" onclick="retryGeneration()">🔄 Повторить генерацию</button>
             <a href="/create-song" class="pgs-btn pgs-btn-ghost" style="margin-top:12px;">← На страницу создания</a>

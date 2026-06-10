@@ -298,15 +298,18 @@ class PublicGenerateController extends Controller
             'language' => 'required|string|in:ru,en,de,es,fr,it',
             'occasion' => 'nullable|string|max:500',
             'description' => 'nullable|string|max:10000',
-            // Контакт
+            // Контакт (только email — на телефон отправку песен не делаем)
             'first_name' => 'nullable|string|max:100',
-            'contact' => 'required|string|max:255',
+            'contact' => 'required|email|max:255',
             'utm_source' => 'nullable|string|max:100',
             'utm_medium' => 'nullable|string|max:100',
             'utm_campaign' => 'nullable|string|max:100',
             'utm_content' => 'nullable|string|max:100',
             'utm_term' => 'nullable|string|max:100',
             'ym_client_id' => 'nullable|string|max:50',
+        ], [
+            'contact.required' => 'Укажите email',
+            'contact.email' => 'Укажите корректный email',
         ]);
 
         // Название: если пусто или generic — сгенерируем из текста

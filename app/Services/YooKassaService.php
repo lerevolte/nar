@@ -270,7 +270,7 @@ class YooKassaService
     private function prepareCustomerData(?string $contact): array
     {
         if (! $contact) {
-            return ['email' => 'customer@narepite.site'];
+            return ['email' => 'support@narepite.com'];
         }
 
         $contact = trim($contact);

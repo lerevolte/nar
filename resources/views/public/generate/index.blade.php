@@ -1428,9 +1428,9 @@
             </div>
 
             <div class="pg-contact-group">
-                <label class="pg-contact-label" for="buyer-contact">Email или телефон *</label>
-                <input type="text" class="pg-input" id="buyer-contact" placeholder="you@example.com или +7 900 000 00 00" required value="{{ $authUser->email ?? $authUser->contact ?? '' }}">
-                <div class="pg-contact-hint">🔒 На этот контакт придёт готовая песня и доступ в личный кабинет. Чек по 54-ФЗ — на email / СМС.</div>
+                <label class="pg-contact-label" for="buyer-contact">Email *</label>
+                <input type="email" class="pg-input" id="buyer-contact" placeholder="you@example.com" required value="{{ $authUser->email ?? '' }}">
+                <div class="pg-contact-hint">🔒 На эту почту придёт готовая песня и доступ в личный кабинет. Чек по 54-ФЗ — на email.</div>
             </div>
 
             {{-- Trust-бейджи --}}
@@ -2364,8 +2364,9 @@
         const name = document.getElementById('buyer-name').value.trim();
         const contact = document.getElementById('buyer-contact').value.trim();
 
-        if (!contact) {
-            pgShowError('Укажи email или телефон');
+        const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!contact || !emailRe.test(contact)) {
+            pgShowError('Укажи корректный email');
             document.getElementById('buyer-contact').focus();
             return;
         }
@@ -2402,7 +2403,10 @@
             });
             const d = await r.json();
 
-            if (!r.ok) throw new Error(d.error || 'Ошибка создания заказа');
+            if (!r.ok) {
+                const validationMsg = d.errors ? Object.values(d.errors)[0][0] : null;
+                throw new Error(d.error || validationMsg || d.message || 'Ошибка создания заказа');
+            }
 
             // Редирект на страницу оплаты ЮKassa
             window.location.href = d.payment_url;

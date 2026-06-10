@@ -708,7 +708,8 @@ class PublicGenerateController extends Controller
             return response()->json(['error' => 'Order not found'], 404);
         }
 
-        if (! $order->isPaid()) {
+        // Заказ был оплачен (paid_at), даже если сейчас статус 'failed' — повтор разрешён
+        if (! $order->paid_at) {
             return response()->json(['error' => 'Order not paid'], 402);
         }
 

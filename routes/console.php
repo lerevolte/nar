@@ -10,5 +10,7 @@ Artisan::command('inspire', function () {
 
 // Закрытие просроченных чартов каждый час
 Schedule::command('charts:close-expired')->hourly();
+// Сверка платежей сайта с ЮKassa (страховка: вебхук может не дойти, бот видит только свой магазин)
+Schedule::command('payments:reconcile')->everyFiveMinutes();
 Schedule::command('metrica:sync-conversions --hours=6')->everyFourHours();
 Schedule::command('charts:gift-votes --count=6 --votes=1 --exclude=30251')->dailyAt('14:00');

@@ -24,12 +24,12 @@ class LandingController extends Controller
 
         // Топ треки за всё время (суммируем голоса по всем чартам)
         $entries = ChartEntry::select(
-                'song_id',
-                'user_id',
-                DB::raw('SUM(votes_count) as total_votes'),
-                DB::raw('MIN(id) as id'),
-                DB::raw('MIN(created_at) as first_added')
-            )
+            'song_id',
+            'user_id',
+            DB::raw('SUM(votes_count) as total_votes'),
+            DB::raw('MIN(id) as id'),
+            DB::raw('MIN(created_at) as first_added')
+        )
             ->with(['song', 'user'])
             ->groupBy('song_id', 'user_id')
             ->having('total_votes', '>', 0)
@@ -40,7 +40,9 @@ class LandingController extends Controller
 
         $topTracks = $entries->map(function ($entry, $index) {
             $song = $entry->song;
-            if (!$song || !$song->file_path) return null;
+            if (! $song || ! $song->file_path) {
+                return null;
+            }
 
             return [
                 'position' => $index + 1,
@@ -88,7 +90,7 @@ class LandingController extends Controller
         $request->validate(['song_id' => 'required|integer']);
 
         $song = Song::find($request->input('song_id'));
-        if (!$song) {
+        if (! $song) {
             return response()->json(['error' => 'Not found'], 404);
         }
 
@@ -108,7 +110,7 @@ class LandingController extends Controller
         $request->validate(['song_id' => 'required|integer']);
 
         $user = $request->get('auth_user');
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Требуется авторизация'], 401);
         }
 
@@ -116,14 +118,14 @@ class LandingController extends Controller
 
         // Находим entry (предпочтительно из активного чарта)
         $entry = ChartEntry::where('song_id', $songId)
-            ->whereHas('chart', fn($q) => $q->where('is_active', true))
+            ->whereHas('chart', fn ($q) => $q->where('is_active', true))
             ->first();
 
-        if (!$entry) {
+        if (! $entry) {
             $entry = ChartEntry::where('song_id', $songId)->latest()->first();
         }
 
-        if (!$entry) {
+        if (! $entry) {
             return response()->json(['error' => 'Песня не найдена в чартах'], 404);
         }
 
@@ -144,15 +146,27 @@ class LandingController extends Controller
             $voteEntry = ChartEntry::find($existingVote->chart_entry_id);
             DB::transaction(function () use ($existingVote, $voteEntry) {
                 $existingVote->delete();
-                if ($voteEntry) $voteEntry->decrement('votes_count');
+                if ($voteEntry) {
+                    $voteEntry->decrement('votes_count');
+                }
             });
 
             $totalVotes = ChartEntry::where('song_id', $songId)->sum('votes_count');
+
             return response()->json([
                 'success' => true,
                 'action' => 'unliked',
                 'votes_count' => $totalVotes,
             ]);
+        }
+
+        // Голосовать могут только пользователи с покупками
+        $hasPurchases = \App\Models\Payment::where('user_id', $user->user_id)
+            ->where('status', 'succeeded')
+            ->exists();
+
+        if (! $hasPurchases) {
+            return response()->json(['error' => 'Голосовать могут только пользователи, совершившие покупку'], 403);
         }
 
         // Добавляем голос
@@ -165,6 +179,7 @@ class LandingController extends Controller
         });
 
         $totalVotes = ChartEntry::where('song_id', $songId)->sum('votes_count');
+
         return response()->json([
             'success' => true,
             'action' => 'liked',
@@ -187,17 +202,17 @@ class LandingController extends Controller
 
         // Все треки из чартов, сгруппированные по song_id
         $query = ChartEntry::select(
-                'song_id',
-                'user_id',
-                DB::raw('SUM(votes_count) as total_votes'),
-                DB::raw('MIN(id) as id'),
-                DB::raw('MIN(created_at) as first_added')
-            )
+            'song_id',
+            'user_id',
+            DB::raw('SUM(votes_count) as total_votes'),
+            DB::raw('MIN(id) as id'),
+            DB::raw('MIN(created_at) as first_added')
+        )
             ->whereHas('song', function ($q) {
                 $q->whereNotNull('file_path')
-                  ->where(function ($q2) {
-                      $q2->where('is_deleted', false)->orWhereNull('is_deleted');
-                  });
+                    ->where(function ($q2) {
+                        $q2->where('is_deleted', false)->orWhereNull('is_deleted');
+                    });
             })
             ->groupBy('song_id', 'user_id')
             ->orderByDesc('total_votes')
@@ -209,6 +224,7 @@ class LandingController extends Controller
         $entries->getCollection()->transform(function ($entry) {
             $entry->setRelation('song', Song::find($entry->song_id));
             $entry->setRelation('user', \App\Models\User::where('user_id', $entry->user_id)->first());
+
             return $entry;
         });
 

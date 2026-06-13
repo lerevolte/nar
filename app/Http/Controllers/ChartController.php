@@ -7,9 +7,9 @@ use App\Models\ChartEntry;
 use App\Models\ChartVote;
 use App\Models\Song;
 use App\Services\ChartService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class ChartController extends Controller
 {
@@ -49,7 +49,7 @@ class ChartController extends Controller
 
         // Получаем песни пользователя для добавления
         $userSongs = collect();
-        if (!$userEntry) {
+        if (! $userEntry) {
             $userSongs = Song::where('user_id', $user->user_id)
                 ->notDeleted()
                 ->whereNotNull('file_path')
@@ -88,7 +88,7 @@ class ChartController extends Controller
         $request->validate([
             'song_id' => 'required|integer',
             'variant' => 'nullable|integer|in:1,2',
-            'comment' => 'nullable|string|max:500'
+            'comment' => 'nullable|string|max:500',
         ]);
 
         $user = $request->get('auth_user');
@@ -102,7 +102,7 @@ class ChartController extends Controller
             ->whereNotNull('file_path')
             ->first();
 
-        if (!$song) {
+        if (! $song) {
             return response()->json(['error' => 'Песня не найдена'], 404);
         }
 
@@ -110,8 +110,8 @@ class ChartController extends Controller
 
         // Проверяем лимит (1 песня на чарт)
         $canAdd = $chartService->canUserAddSong($user->user_id, $chart->id);
-        
-        if (!$canAdd['can_add']) {
+
+        if (! $canAdd['can_add']) {
             return response()->json(['error' => $canAdd['reason']], 400);
         }
 
@@ -131,7 +131,7 @@ class ChartController extends Controller
             'user_id' => $user->user_id,
             'votes_count' => 0,
             'variant' => $variant,
-            'comment' => $comment
+            'comment' => $comment,
         ]);
 
         return response()->json([
@@ -154,13 +154,13 @@ class ChartController extends Controller
         $entryId = $request->input('entry_id');
 
         $entry = ChartEntry::find($entryId);
-        if (!$entry) {
+        if (! $entry) {
             return response()->json(['error' => 'Запись не найдена'], 404);
         }
 
         // Проверяем что чарт активен
         $chart = Chart::find($entry->chart_id);
-        if (!$chart || !$chart->is_active) {
+        if (! $chart || ! $chart->is_active) {
             return response()->json(['error' => 'Чарт уже завершён'], 400);
         }
 
@@ -174,10 +174,9 @@ class ChartController extends Controller
             ->where('status', 'succeeded')
             ->exists();
 
-        if (!$hasPurchases) {
+        if (! $hasPurchases) {
             return response()->json(['error' => 'Голосовать могут только пользователи, совершившие покупку'], 403);
         }
-
 
         // Проверяем что ещё не голосовал за эту песню
         $existingVote = ChartVote::where('chart_entry_id', $entryId)
@@ -226,13 +225,13 @@ class ChartController extends Controller
         $entryId = $request->input('entry_id');
 
         $entry = ChartEntry::find($entryId);
-        if (!$entry) {
+        if (! $entry) {
             return response()->json(['error' => 'Запись не найдена'], 404);
         }
 
         // Проверяем что чарт активен
         $chart = Chart::find($entry->chart_id);
-        if (!$chart || !$chart->is_active) {
+        if (! $chart || ! $chart->is_active) {
             return response()->json(['error' => 'Чарт уже завершён'], 400);
         }
 
@@ -241,7 +240,7 @@ class ChartController extends Controller
             ->where('user_id', $user->user_id)
             ->first();
 
-        if (!$vote) {
+        if (! $vote) {
             return response()->json(['error' => 'Вы не голосовали за эту песню'], 400);
         }
 
@@ -269,7 +268,6 @@ class ChartController extends Controller
 
         return view('charts.archive', compact('charts'));
     }
-
 
     /**
      * Просмотр конкретного чарта
@@ -321,7 +319,6 @@ class ChartController extends Controller
         ));
     }
 
-
     /**
      * Чарт за всё время
      */
@@ -332,12 +329,12 @@ class ChartController extends Controller
         // Получаем все песни, которые когда-либо участвовали в чартах
         // Группируем по song_id и суммируем голоса
         $entries = ChartEntry::select(
-                'song_id',
-                'user_id',
-                DB::raw('SUM(votes_count) as total_votes'),
-                DB::raw('MIN(id) as id'),
-                DB::raw('MIN(created_at) as first_added')
-            )
+            'song_id',
+            'user_id',
+            DB::raw('SUM(votes_count) as total_votes'),
+            DB::raw('MIN(id) as id'),
+            DB::raw('MIN(created_at) as first_added')
+        )
             ->with(['song', 'user'])
             ->groupBy('song_id', 'user_id')
             ->orderByDesc('total_votes')
@@ -353,7 +350,7 @@ class ChartController extends Controller
 
         // Получаем все entry_id для этих песен (для голосования)
         $songIds = $entries->pluck('song_id')->toArray();
-        
+
         $entryIds = ChartEntry::whereIn('song_id', $songIds)
             ->pluck('id')
             ->toArray();
@@ -372,7 +369,7 @@ class ChartController extends Controller
                     $q->where('is_active', true);
                 })
                 ->first();
-            
+
             if ($activeEntry) {
                 $songEntryMap[$entry->song_id] = $activeEntry->id;
             } else {
@@ -409,18 +406,27 @@ class ChartController extends Controller
             })
             ->first();
 
-        if (!$entry) {
+        if (! $entry) {
             // Берём последний entry
             $entry = ChartEntry::where('song_id', $songId)->latest()->first();
         }
 
-        if (!$entry) {
+        if (! $entry) {
             return response()->json(['error' => 'Песня не найдена'], 404);
         }
 
         // Нельзя голосовать за свои песни
         if ($entry->user_id === $user->user_id) {
             return response()->json(['error' => 'Нельзя голосовать за свои песни'], 400);
+        }
+
+        // Голосовать могут только пользователи с покупками
+        $hasPurchases = \App\Models\Payment::where('user_id', $user->user_id)
+            ->where('status', 'succeeded')
+            ->exists();
+
+        if (! $hasPurchases) {
+            return response()->json(['error' => 'Голосовать могут только пользователи, совершившие покупку'], 403);
         }
 
         // Проверяем, голосовал ли уже за любой entry этой песни
@@ -485,7 +491,7 @@ class ChartController extends Controller
             })
             ->first();
 
-        if (!$vote) {
+        if (! $vote) {
             return response()->json(['error' => 'Вы не голосовали за эту песню'], 400);
         }
 
@@ -528,7 +534,7 @@ class ChartController extends Controller
             })
             ->first();
 
-        if (!$entry) {
+        if (! $entry) {
             return response()->json(['error' => 'Песня не найдена в активном чарте'], 404);
         }
 
@@ -568,8 +574,8 @@ class ChartController extends Controller
                 'title' => $entry->song->title ?? 'Без названия',
                 'author' => $entry->user->first_name ?? $entry->user->username ?? 'Автор',
                 'votes' => $entry->votes_count,
-                'audio_url' => ($entry->variant == 2) 
-                    ? $entry->song->file_path_2 
+                'audio_url' => ($entry->variant == 2)
+                    ? $entry->song->file_path_2
                     : $entry->song->file_path,
             ];
         });
@@ -589,9 +595,9 @@ class ChartController extends Controller
 
         // Получаем или создаём чарт
         $chart = $chartService->getOrCreateThemeChart('valentine');
-        
+
         // Если чарт не найден — создаём
-        if (!$chart) {
+        if (! $chart) {
             $chart = $chartService->createValentineChart();
         }
 
@@ -622,7 +628,7 @@ class ChartController extends Controller
 
         // Песни пользователя для добавления
         $userSongs = collect();
-        if (!$userEntry) {
+        if (! $userEntry) {
             $userSongs = Song::where('user_id', $user->user_id)
                 ->whereNotNull('file_path')
                 ->whereNotIn('id', function ($query) use ($chart) {
@@ -672,6 +678,7 @@ class ChartController extends Controller
             'timeLeft'
         ));
     }
+
     /**
      * Добавить песню в тематический чарт
      */
@@ -681,7 +688,7 @@ class ChartController extends Controller
             'song_id' => 'required|integer',
             'theme' => 'required|string|in:valentine',
             'variant' => 'nullable|integer|in:1,2',
-            'comment' => 'nullable|string|max:500'
+            'comment' => 'nullable|string|max:500',
         ]);
 
         $user = $request->get('auth_user');
@@ -692,8 +699,8 @@ class ChartController extends Controller
 
         // Получаем чарт
         $chart = $chartService->getOrCreateThemeChart($theme);
-        
-        if (!$chart) {
+
+        if (! $chart) {
             return response()->json(['error' => 'Чарт не найден или завершён'], 404);
         }
 
@@ -703,7 +710,7 @@ class ChartController extends Controller
             ->whereNotNull('file_path')
             ->first();
 
-        if (!$song) {
+        if (! $song) {
             return response()->json(['error' => 'Песня не найдена'], 404);
         }
 
@@ -732,7 +739,7 @@ class ChartController extends Controller
             'user_id' => $user->user_id,
             'votes_count' => 0,
             'variant' => $variant,
-            'comment' => $comment
+            'comment' => $comment,
         ]);
 
         return response()->json([
@@ -764,7 +771,7 @@ class ChartController extends Controller
             })
             ->first();
 
-        if (!$entry) {
+        if (! $entry) {
             return response()->json(['error' => 'Песня не найдена в чарте'], 404);
         }
 
@@ -778,7 +785,6 @@ class ChartController extends Controller
             'message' => 'Песня удалена из чарта',
         ]);
     }
-
 
     /**
      * Склонение слов
@@ -796,6 +802,7 @@ class ChartController extends Controller
         if ($n >= 2 && $n <= 4) {
             return $few;
         }
+
         return $many;
     }
 }

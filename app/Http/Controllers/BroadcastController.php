@@ -14,6 +14,7 @@ class BroadcastController extends Controller
     private function isAdmin(Request $request): bool
     {
         $user = $request->get('auth_user');
+
         return $user && in_array($user->user_id, self::ADMIN_IDS);
     }
 
@@ -22,7 +23,9 @@ class BroadcastController extends Controller
      */
     public function index(Request $request)
     {
-        if (!$this->isAdmin($request)) abort(403);
+        if (! $this->isAdmin($request)) {
+            abort(403);
+        }
 
         $broadcasts = Broadcast::orderByDesc('created_at')->take(20)->get();
 
@@ -34,7 +37,9 @@ class BroadcastController extends Controller
      */
     public function countSegment(Request $request, BroadcastService $service)
     {
-        if (!$this->isAdmin($request)) return response()->json(['error' => 'Forbidden'], 403);
+        if (! $this->isAdmin($request)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
 
         $request->validate(['segment' => 'required|string|in:all,inactive_mix,paid,test']);
 
@@ -48,7 +53,9 @@ class BroadcastController extends Controller
      */
     public function create(Request $request, BroadcastService $service)
     {
-        if (!$this->isAdmin($request)) return response()->json(['error' => 'Forbidden'], 403);
+        if (! $this->isAdmin($request)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
 
         $request->validate([
             'segment' => 'required|string|in:all,inactive_mix,paid,test',
@@ -96,7 +103,9 @@ class BroadcastController extends Controller
      */
     public function status(Request $request, $id)
     {
-        if (!$this->isAdmin($request)) return response()->json(['error' => 'Forbidden'], 403);
+        if (! $this->isAdmin($request)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
 
         $broadcast = Broadcast::findOrFail($id);
 
@@ -118,7 +127,9 @@ class BroadcastController extends Controller
      */
     public function pause(Request $request, $id)
     {
-        if (!$this->isAdmin($request)) return response()->json(['error' => 'Forbidden'], 403);
+        if (! $this->isAdmin($request)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
 
         $broadcast = Broadcast::findOrFail($id);
         $broadcast->update(['status' => 'paused']);
@@ -141,12 +152,13 @@ class BroadcastController extends Controller
             ->orderByDesc('created_at')
             ->take(20)
             ->get()
-            ->map(fn($n) => [
+            ->map(fn ($n) => [
                 'id' => $n->id,
                 'title' => $n->title,
                 'message' => $n->message,
                 'is_read' => $n->is_read,
                 'created_at' => $n->created_at?->format('d.m.Y H:i'),
+                'created_at_ts' => $n->created_at?->timestamp,
             ]);
 
         $unreadCount = WebNotification::where('user_id', $user->user_id)
@@ -168,12 +180,18 @@ class BroadcastController extends Controller
 
         $request->validate([
             'notification_id' => 'nullable|integer',
+            'notification_ids' => 'nullable|array',
+            'notification_ids.*' => 'integer',
             'mark_all' => 'nullable|boolean',
         ]);
 
         if ($request->input('mark_all')) {
             WebNotification::where('user_id', $user->user_id)
                 ->where('is_read', 0)
+                ->update(['is_read' => 1]);
+        } elseif ($request->filled('notification_ids')) {
+            WebNotification::whereIn('id', $request->input('notification_ids'))
+                ->where('user_id', $user->user_id)
                 ->update(['is_read' => 1]);
         } elseif ($request->input('notification_id')) {
             WebNotification::where('id', $request->input('notification_id'))

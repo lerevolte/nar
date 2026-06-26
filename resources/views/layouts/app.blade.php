@@ -98,6 +98,20 @@
         </div>
     </div>
 
+    <!-- Notification Popup (auto on page load) -->
+    <div class="notif-popup-overlay" id="notif-popup-overlay" onclick="if(event.target===this)closeNotifPopup()">
+        <div class="notif-popup">
+            <div class="notif-popup-header">
+                <span class="notif-popup-title">🔔 Новые уведомления</span>
+                <button class="notif-popup-close" onclick="closeNotifPopup()" aria-label="Закрыть">&times;</button>
+            </div>
+            <div class="notif-popup-list" id="notif-popup-list"></div>
+            <div class="notif-popup-footer">
+                <button class="btn-create" onclick="markPopupRead()">Прочитано</button>
+            </div>
+        </div>
+    </div>
+
     <main class="main-content">
         @yield('content')
     </main>
@@ -272,7 +286,7 @@
         } catch (e) { console.error(e); }
     }
 
-    // Check unread count on page load
+    // Check unread count on page load (+ auto popup for new notifications)
     async function checkUnread() {
         try {
             const r = await fetch('/api/notifications', {
@@ -281,9 +295,86 @@
             });
             const d = await r.json();
             updateBadge(d.unread_count);
+            maybeShowNotifPopup(d.notifications);
         } catch (e) {}
     }
     document.addEventListener('DOMContentLoaded', checkUnread);
+
+    // === Auto popup ===
+    // Показываем попапом при загрузке только непрочитанные уведомления
+    // за последние 24 часа. Каждое уведомление всплывает один раз на устройство
+    // (чтобы не появлялось на каждой странице). Кнопка «Прочитано» помечает
+    // показанные уведомления прочитанными — после этого они больше не выскакивают.
+    const POPUP_SEEN_KEY = 'narepite_popup_seen_notifs';
+    const POPUP_MAX_AGE_SEC = 24 * 60 * 60; // 24 часа
+    let popupNotifIds = [];
+
+    function getPopupSeen() {
+        try { return JSON.parse(localStorage.getItem(POPUP_SEEN_KEY) || '[]'); }
+        catch (e) { return []; }
+    }
+    function savePopupSeen(ids) {
+        try { localStorage.setItem(POPUP_SEEN_KEY, JSON.stringify(ids.slice(-300))); }
+        catch (e) {}
+    }
+
+    function maybeShowNotifPopup(list) {
+        if (!Array.isArray(list) || list.length === 0) return;
+        const seen = getPopupSeen();
+        const nowSec = Date.now() / 1000;
+        const fresh = list.filter(n =>
+            !n.is_read &&
+            !seen.includes(n.id) &&
+            n.created_at_ts &&
+            (nowSec - n.created_at_ts) <= POPUP_MAX_AGE_SEC
+        );
+        if (fresh.length === 0) return;
+
+        popupNotifIds = fresh.map(n => n.id);
+        const container = document.getElementById('notif-popup-list');
+        container.innerHTML = fresh.map(n => `
+            <div class="notif-item">
+                <div class="notif-item-title">${n.title}</div>
+                <div class="notif-item-text">${n.message}</div>
+                <div class="notif-item-date">${n.created_at || ''}</div>
+            </div>
+        `).join('');
+        document.getElementById('notif-popup-overlay').classList.add('open');
+
+        savePopupSeen(seen.concat(popupNotifIds));
+    }
+
+    function closeNotifPopup() {
+        document.getElementById('notif-popup-overlay').classList.remove('open');
+    }
+
+    // Кнопка «Прочитано»: помечаем показанные уведомления прочитанными на сервере,
+    // обновляем бейдж и закрываем попап. Больше выскакивать не будут.
+    async function markPopupRead() {
+        const ids = popupNotifIds.slice();
+        closeNotifPopup();
+        if (ids.length === 0) return;
+        try {
+            await fetch('/api/notifications/read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ notification_ids: ids }),
+            });
+            // Сбросить выделение в боковой панели, если она уже загружена
+            ids.forEach(id => {
+                const el = document.querySelector(`.notif-item[data-id="${id}"]`);
+                if (el) el.classList.remove('unread');
+            });
+            // Уменьшить бейдж
+            const badge = document.getElementById('notif-badge');
+            const cur = parseInt(badge.textContent, 10) || 0;
+            updateBadge(Math.max(0, cur - ids.length));
+        } catch (e) { console.error(e); }
+    }
     </script>
     <script>
     function toggleAdminMenu(e) {

@@ -178,10 +178,21 @@
     .stem-loading-text { display:none; text-align:center; padding:20px; color:var(--text-secondary); font-size:14px; }
     .stem-loading-text.show { display:block; }
     .stem-loading-spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 12px; }
+
+    /* Track operations */
+    .track-ops-grid { display:flex; flex-direction:column; gap:8px; }
+    .op-input { width:100%; padding:12px; border:1.5px solid var(--border); border-radius:var(--radius-md); font-size:14px; font-family:inherit; background:var(--bg-input); color:var(--text-primary); }
+    .op-input:focus { outline:none; border-color:var(--accent); }
 </style>
 @endpush
 
 @section('content')
+@php
+    $trackOpsAllowedIds = config('services.track_ops.allowed_user_ids', []);
+    $trackOpsAllowed = empty($trackOpsAllowedIds)
+        || in_array('*', $trackOpsAllowedIds, true)
+        || in_array((string) $authUser->user_id, $trackOpsAllowedIds, true);
+@endphp
 <a href="{{ route('songs.index') }}" style="display:inline-flex; align-items:center; gap:6px; color:var(--text-tertiary); margin-bottom:16px; font-size:14px;">← Назад к трекам</a>
 
 <div class="song-detail-header">
@@ -400,6 +411,108 @@
     </div>
 </div>
 @endif
+{{-- Track operations (extend / replace section / mashup) --}}
+@if($song->file_path && $song->suno_task_id && $song->user_id === $authUser->user_id && $trackOpsAllowed)
+<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-top:16px;">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">🎛 Изменить трек</h3>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Продлите песню, замените фрагмент или смешайте с другим треком</p>
+    <div class="track-ops-grid">
+        <button class="chart-add-btn" onclick="openExtendModal()">➕ Продлить трек</button>
+        <button class="chart-add-btn" onclick="openMashupModal()">🔀 Сделать мэшап</button>
+        <button class="chart-add-btn" onclick="openReplaceModal()">✏️ Заменить фрагмент</button>
+    </div>
+    <p style="font-size:12px;color:var(--text-tertiary);margin-top:10px;">Продление и мэшап спишут 1 песню с баланса. Замена фрагмента — отдельная функция.</p>
+</div>
+
+{{-- Extend modal --}}
+<div class="chart-modal-overlay" id="extendModal">
+    <div class="chart-modal">
+        <div class="chart-modal-header"><h3>➕ Продлить трек</h3><button class="chart-modal-close" onclick="closeOpModal('extendModal')">✕</button></div>
+        <div class="chart-modal-body">
+            <p class="chart-modal-desc">Допишем продолжение к выбранному варианту. Спишется 1 песня.</p>
+            <div class="chart-modal-section">
+                <label>Вариант:</label>
+                <div class="variant-buttons" id="extend-variants">
+                    @if($song->audio_id_1)<button type="button" class="variant-btn active" data-variant="1" onclick="selectOpVariant('extend',1)">Вариант 1</button>@endif
+                    @if($song->audio_id_2)<button type="button" class="variant-btn" data-variant="2" onclick="selectOpVariant('extend',2)">Вариант 2</button>@endif
+                </div>
+            </div>
+            <div class="chart-modal-section">
+                <label>С какой секунды продолжить (необязательно):</label>
+                <input type="number" id="extend-continue" class="op-input" min="0" step="1" placeholder="например, 120 — с конца, если пусто">
+            </div>
+            <div class="chart-modal-section">
+                <label>Что добавить в продолжении (необязательно):</label>
+                <textarea id="extend-prompt" placeholder="Текст / описание продолжения" maxlength="5000"></textarea>
+            </div>
+        </div>
+        <div class="chart-modal-footer">
+            <button class="chart-modal-cancel" onclick="closeOpModal('extendModal')">Отмена</button>
+            <button class="chart-modal-submit" id="extend-submit" onclick="submitExtend()">Продлить</button>
+        </div>
+    </div>
+</div>
+
+{{-- Mashup modal --}}
+<div class="chart-modal-overlay" id="mashupModal">
+    <div class="chart-modal">
+        <div class="chart-modal-header"><h3>🔀 Мэшап</h3><button class="chart-modal-close" onclick="closeOpModal('mashupModal')">✕</button></div>
+        <div class="chart-modal-body">
+            <p class="chart-modal-desc">Смешаем этот трек с другим вашим треком. Спишется 1 песня.</p>
+            <div class="chart-modal-section">
+                <label>Второй трек:</label>
+                <select id="mashup-song" class="op-input"><option value="">Загрузка...</option></select>
+            </div>
+            <div class="chart-modal-section">
+                <label>Стиль (необязательно):</label>
+                <input type="text" id="mashup-style" class="op-input" placeholder="например, lo-fi, dance" maxlength="200">
+            </div>
+        </div>
+        <div class="chart-modal-footer">
+            <button class="chart-modal-cancel" onclick="closeOpModal('mashupModal')">Отмена</button>
+            <button class="chart-modal-submit" id="mashup-submit" onclick="submitMashup()">Смешать</button>
+        </div>
+    </div>
+</div>
+
+{{-- Replace section modal --}}
+<div class="chart-modal-overlay" id="replaceModal">
+    <div class="chart-modal">
+        <div class="chart-modal-header"><h3>✏️ Заменить фрагмент</h3><button class="chart-modal-close" onclick="closeOpModal('replaceModal')">✕</button></div>
+        <div class="chart-modal-body">
+            <p class="chart-modal-desc">Перезапишем участок песни (от 6 до 60 сек). Отдельная функция.</p>
+            <div class="chart-modal-section">
+                <label>Вариант:</label>
+                <div class="variant-buttons" id="replace-variants">
+                    @if($song->audio_id_1)<button type="button" class="variant-btn active" data-variant="1" onclick="selectOpVariant('replace',1)">Вариант 1</button>@endif
+                    @if($song->audio_id_2)<button type="button" class="variant-btn" data-variant="2" onclick="selectOpVariant('replace',2)">Вариант 2</button>@endif
+                </div>
+            </div>
+            <div class="chart-modal-section" style="display:flex;gap:10px;">
+                <div style="flex:1;"><label>Начало (сек):</label><input type="number" id="replace-start" class="op-input" min="0" step="0.01" placeholder="10.0"></div>
+                <div style="flex:1;"><label>Конец (сек):</label><input type="number" id="replace-end" class="op-input" min="0" step="0.01" placeholder="25.0"></div>
+            </div>
+            <div class="chart-modal-section">
+                <label>Стиль (теги):</label>
+                <input type="text" id="replace-tags" class="op-input" placeholder="например, pop, energetic" maxlength="200">
+            </div>
+            <div class="chart-modal-section">
+                <label>Что спеть в этом фрагменте:</label>
+                <textarea id="replace-prompt" placeholder="Описание нового фрагмента" maxlength="5000"></textarea>
+            </div>
+            <div class="chart-modal-section">
+                <label>Полный текст песни (с правкой):</label>
+                <textarea id="replace-lyrics" maxlength="5000">{{ $song->lyrics }}</textarea>
+            </div>
+        </div>
+        <div class="chart-modal-footer">
+            <button class="chart-modal-cancel" onclick="closeOpModal('replaceModal')">Отмена</button>
+            <button class="chart-modal-submit" id="replace-submit" onclick="submitReplace()">Заменить</button>
+        </div>
+    </div>
+</div>
+@endif
+
 @if($song->lyrics)
 <div class="lyrics-box">
     <h3 style="font-size:16px; margin-bottom:10px; font-weight:700;">📝 Текст песни</h3>
@@ -615,6 +728,88 @@
                 btn.disabled = false; btn.textContent = 'Создать';
             }
         } catch(e) { alert('Ошибка: ' + e.message); btn.disabled = false; btn.textContent = 'Создать'; }
+    }
+
+    // ===== TRACK OPERATIONS (extend / mashup / replace) =====
+    const opVariant = { extend: 1, replace: 1 };
+    function selectOpVariant(kind, v) {
+        opVariant[kind] = v;
+        document.querySelectorAll(`#${kind}-variants .variant-btn`).forEach(b => b.classList.toggle('active', parseInt(b.dataset.variant) === v));
+    }
+    function openOpModal(id) { document.getElementById(id).classList.add('active'); document.body.style.overflow = 'hidden'; }
+    function closeOpModal(id) { document.getElementById(id).classList.remove('active'); document.body.style.overflow = ''; }
+    ['extendModal','mashupModal','replaceModal'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('click', e => { if (e.target === el) closeOpModal(id); });
+    });
+
+    async function runTrackOp(url, body, btn) {
+        const orig = btn.textContent; btn.disabled = true; btn.textContent = '⏳ Запускаю...';
+        try {
+            const r = await fetch(url, {
+                method:'POST',
+                headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
+                credentials:'same-origin',
+                body: JSON.stringify(body)
+            });
+            const d = await r.json();
+            if (r.ok && d.success) {
+                window.location.href = '/songs/' + d.song_id;
+            } else {
+                alert('❌ ' + (d.error || 'Ошибка'));
+                btn.disabled = false; btn.textContent = orig;
+            }
+        } catch(e) { alert('Ошибка: ' + e.message); btn.disabled = false; btn.textContent = orig; }
+    }
+
+    function openExtendModal() { openOpModal('extendModal'); }
+    function submitExtend() {
+        const continueAt = document.getElementById('extend-continue').value;
+        const body = { song_id: songId, variant: opVariant.extend };
+        if (continueAt !== '') body.continue_at = parseFloat(continueAt);
+        const prompt = document.getElementById('extend-prompt').value.trim();
+        if (prompt) body.prompt = prompt;
+        runTrackOp('/api/track-ops/extend', body, document.getElementById('extend-submit'));
+    }
+
+    function openReplaceModal() { openOpModal('replaceModal'); }
+    function submitReplace() {
+        const start = parseFloat(document.getElementById('replace-start').value);
+        const end = parseFloat(document.getElementById('replace-end').value);
+        const tags = document.getElementById('replace-tags').value.trim();
+        const prompt = document.getElementById('replace-prompt').value.trim();
+        const lyrics = document.getElementById('replace-lyrics').value.trim();
+        if (isNaN(start) || isNaN(end)) { alert('Укажите начало и конец фрагмента'); return; }
+        if (end - start < 6 || end - start > 60) { alert('Фрагмент должен быть от 6 до 60 секунд'); return; }
+        if (!tags || !prompt || !lyrics) { alert('Заполните стиль, описание фрагмента и текст'); return; }
+        runTrackOp('/api/track-ops/replace-section', {
+            song_id: songId, variant: opVariant.replace,
+            infill_start_s: start, infill_end_s: end,
+            tags, prompt, full_lyrics: lyrics
+        }, document.getElementById('replace-submit'));
+    }
+
+    let mashupLoaded = false;
+    async function openMashupModal() {
+        openOpModal('mashupModal');
+        if (mashupLoaded) return;
+        const sel = document.getElementById('mashup-song');
+        try {
+            const r = await fetch('/api/songs', { headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'}, credentials:'same-origin' });
+            const d = await r.json();
+            const others = (d.songs || []).filter(s => s.id !== songId && s.audio_url_1);
+            if (!others.length) { sel.innerHTML = '<option value="">Нет других треков</option>'; return; }
+            sel.innerHTML = others.map(s => `<option value="${s.id}">${(s.title||'Без названия').replace(/</g,'&lt;')}</option>`).join('');
+            mashupLoaded = true;
+        } catch(e) { sel.innerHTML = '<option value="">Ошибка загрузки</option>'; }
+    }
+    function submitMashup() {
+        const other = document.getElementById('mashup-song').value;
+        if (!other) { alert('Выберите второй трек'); return; }
+        const body = { song_ids: [songId, parseInt(other)] };
+        const style = document.getElementById('mashup-style').value.trim();
+        if (style) body.style = style;
+        runTrackOp('/api/track-ops/mashup', body, document.getElementById('mashup-submit'));
     }
 </script>
 @endpush

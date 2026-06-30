@@ -151,8 +151,12 @@ class CheckSongGenerationStatus implements ShouldQueue
             return;
         }
 
+        // replace_section оплачивается отдельно (вне баланса песен) —
+        // возвращать +1 песню на баланс при его провале нельзя.
+        $isOffBalance = ($song->operation_type ?? 'generate') === 'replace_section';
+
         $user = User::where('user_id', $this->userId)->first();
-        if ($user) {
+        if ($user && ! $isOffBalance) {
             $user->increment('balance', 1);
         }
 
@@ -168,9 +172,12 @@ class CheckSongGenerationStatus implements ShouldQueue
 
         // Telegram-уведомление
         try {
+            $refundNote = $isOffBalance
+                ? 'Средства за операцию не списаны.'
+                : 'Мы вернули 1 песню на твой баланс — попробуй ещё раз.';
             $telegramService->sendMessage(
                 $this->userId,
-                "❌ К сожалению, генерация песни «{$song->title}» не удалась. Мы вернули 1 песню на твой баланс — попробуй ещё раз."
+                "❌ К сожалению, генерация песни «{$song->title}» не удалась. {$refundNote}"
             );
         } catch (\Exception $e) {
             Log::error('Refund telegram notify failed: '.$e->getMessage());

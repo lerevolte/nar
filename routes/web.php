@@ -240,6 +240,11 @@ Route::middleware(['tg.auth', 'miniapp', 'maxapp'])->group(function () {
         return view('dashboard.songs', compact('songs', 'chartSongIds'));
     })->name('songs.index');
 
+    // Студия: обработка загружаемого пользователем аудио
+    Route::get('/studio', function (\Illuminate\Http\Request $request) {
+        return view('dashboard.studio', ['authUser' => $request->get('auth_user')]);
+    })->name('studio');
+
     Route::get('/songs/{id}', [DashboardController::class, 'showSong'])->name('songs.show');
     Route::post('/songs/{id}/download/{variant?}', [DashboardController::class, 'createDownloadLink'])
         ->where('variant', '[12]')

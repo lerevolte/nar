@@ -36,8 +36,8 @@ return [
     ],
 
     'openai' => [
-           'api_key' => env('OPENAI_API_KEY'),
-           'model' => env('OPENAI_MODEL', 'gpt-4.1'),
+        'api_key' => env('OPENAI_API_KEY'),
+        'model' => env('OPENAI_MODEL', 'gpt-4.1'),
     ],
 
     'gemini' => [
@@ -56,5 +56,21 @@ return [
     ],
     'kie' => [
         'api_key' => env('KIE_API'),
+        'api_url' => env('KIE_API_URL', 'https://api.kie.ai/api/v1'),
+    ],
+
+    // Операции над треками (extend / cover / add-instrumental и т.д.)
+    'track_ops' => [
+        // На старте функции включены только для этих user_id (обкатка на админе).
+        // Пусто/звёздочка снимет ограничение (доступно всем).
+        'allowed_user_ids' => array_filter(array_map(
+            'trim',
+            explode(',', (string) env('TRACK_OPS_USER_IDS', '288559694'))
+        )),
+        // Дефолтная модель генерации для новых операций.
+        'model' => env('TRACK_OPS_MODEL', 'V5_5'),
+        // Лимиты на загружаемые пользователем аудиофайлы.
+        'upload_max_mb' => (int) env('TRACK_OPS_UPLOAD_MAX_MB', 20),
+        'upload_max_seconds' => (int) env('TRACK_OPS_UPLOAD_MAX_SECONDS', 480),
     ],
 ];

@@ -39,6 +39,16 @@ Route::middleware(['tg.auth', 'miniapp', 'maxapp'])->group(function () {
     Route::post('/stems/separate', [StemController::class, 'separate']);
     Route::get('/stems/status', [StemController::class, 'checkStatus']);
 
+    // Операции над треками (extend / cover / instrumental / vocals / mashup / replace)
+    Route::post('/track-ops/upload', [App\Http\Controllers\TrackEditController::class, 'upload']);
+    Route::post('/track-ops/extend', [App\Http\Controllers\TrackEditController::class, 'extend']);
+    Route::post('/track-ops/upload-cover', [App\Http\Controllers\TrackEditController::class, 'uploadCover']);
+    Route::post('/track-ops/upload-extend', [App\Http\Controllers\TrackEditController::class, 'uploadExtend']);
+    Route::post('/track-ops/add-instrumental', [App\Http\Controllers\TrackEditController::class, 'addInstrumental']);
+    Route::post('/track-ops/add-vocals', [App\Http\Controllers\TrackEditController::class, 'addVocals']);
+    Route::post('/track-ops/mashup', [App\Http\Controllers\TrackEditController::class, 'mashup']);
+    Route::post('/track-ops/replace-section', [App\Http\Controllers\TrackEditController::class, 'replaceSection']);
+
     Route::post('/charts/add-song', [App\Http\Controllers\ChartController::class, 'addSong']);
     Route::post('/charts/vote', [App\Http\Controllers\ChartController::class, 'vote']);
     Route::post('/charts/unvote', [App\Http\Controllers\ChartController::class, 'unvote']);

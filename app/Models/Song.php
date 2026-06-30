@@ -12,6 +12,10 @@ class Song extends Model
 
     protected $fillable = [
         'user_id',
+        'parent_song_id',
+        'source_audio_id',
+        'operation_type',
+        'model',
         'title',
         'occasion',
         'genre',

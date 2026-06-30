@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 class SunoService
 {
     private string $apiKey;
+
     private string $apiUrl;
 
     // Маппинг жанров (как в suno_service.py - GENRE_MAP)
@@ -346,7 +347,6 @@ class SunoService
         $this->apiUrl = config('services.suno.api_url');
     }
 
-
     /**
      * Запуск генерации музыки (1-в-1 как в suno_service.py бота)
      */
@@ -380,7 +380,7 @@ class SunoService
             $genderTags = ', duet, male and female vocals, man and woman singing';
         }
 
-        $stylePrompt = $styleEn . $genderTags;
+        $stylePrompt = $styleEn.$genderTags;
 
         // === Замена артистов (как в боте, строки 1262-1272) ===
         // 1. Словарь — быстро
@@ -428,7 +428,7 @@ class SunoService
         }
 
         // Текст (если не инструментал)
-        if (!$instrumental) {
+        if (! $instrumental) {
             $finalLyrics = is_array($lyrics) ? implode("\n", $lyrics) : (string) $lyrics;
 
             // Voice-теги КОРОТКИЕ (как в боте, строки 1293-1302)
@@ -442,7 +442,7 @@ class SunoService
                 $voiceTag = '';
             }
 
-            $finalLyrics = $voiceTag . $finalLyrics;
+            $finalLyrics = $voiceTag.$finalLyrics;
 
             // Watermarks для промо
             if ($isPromo) {
@@ -453,7 +453,7 @@ class SunoService
             $payload['prompt'] = mb_substr($finalLyrics, 0, 3000);
         }
 
-        Log::info("Generate request: title={$title}, style=" . mb_substr($stylePrompt, 0, 50) . ", instrumental=" . ($instrumental ? 'true' : 'false'));
+        Log::info("Generate request: title={$title}, style=".mb_substr($stylePrompt, 0, 50).', instrumental='.($instrumental ? 'true' : 'false'));
 
         // === Retry логика (как была) ===
         $maxRetries = 3;
@@ -462,11 +462,11 @@ class SunoService
         for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
             try {
                 $generateUrl = ($personaId && $personaSource === 'kie')
-                    ? "https://api.kie.ai/api/v1/generate"
+                    ? 'https://api.kie.ai/api/v1/generate'
                     : "{$this->apiUrl}/generate";
 
                 $response = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . ($personaId && $personaSource === 'kie' ? config('services.kie.api_key') : $this->apiKey),
+                    'Authorization' => 'Bearer '.($personaId && $personaSource === 'kie' ? config('services.kie.api_key') : $this->apiKey),
                     'Content-Type' => 'application/json',
                 ])->timeout(60)->post($generateUrl, $payload);
 
@@ -476,7 +476,12 @@ class SunoService
                 if (in_array($status, [502, 503, 504])) {
                     $lastError = "Сервер генерации недоступен (HTTP {$status})";
                     Log::warning("Suno API {$status}, retry {$attempt}/{$maxRetries}");
-                    if ($attempt < $maxRetries) { sleep(5 * $attempt); continue; }
+                    if ($attempt < $maxRetries) {
+                        sleep(5 * $attempt);
+
+                        continue;
+                    }
+
                     return ['success' => false, 'error' => $lastError, 'retry_possible' => true];
                 }
 
@@ -487,6 +492,7 @@ class SunoService
                         if ($taskId) {
                             return ['success' => true, 'task_id' => $taskId];
                         }
+
                         return ['success' => false, 'error' => 'Не получен ID задачи'];
                     }
 
@@ -502,14 +508,19 @@ class SunoService
 
                 return [
                     'success' => false,
-                    'error' => $this->cleanErrorMessage("HTTP {$status}: " . mb_substr($response->body(), 0, 100)),
+                    'error' => $this->cleanErrorMessage("HTTP {$status}: ".mb_substr($response->body(), 0, 100)),
                 ];
             } catch (\Illuminate\Http\Client\ConnectionException $e) {
-                $lastError = "Ошибка подключения: " . $e->getMessage();
+                $lastError = 'Ошибка подключения: '.$e->getMessage();
                 Log::warning("Suno API connection error: {$e->getMessage()}, attempt {$attempt}/{$maxRetries}");
-                if ($attempt < $maxRetries) { sleep(5 * $attempt); continue; }
+                if ($attempt < $maxRetries) {
+                    sleep(5 * $attempt);
+
+                    continue;
+                }
             } catch (\Exception $e) {
-                Log::error('Suno API exception: ' . $e->getMessage());
+                Log::error('Suno API exception: '.$e->getMessage());
+
                 return ['success' => false, 'error' => $this->cleanErrorMessage($e->getMessage())];
             }
         }
@@ -528,13 +539,13 @@ class SunoService
     {
         try {
             $checkUrl = ($apiSource === 'kie')
-                ? "https://api.kie.ai/api/v1/generate/record-info"
+                ? 'https://api.kie.ai/api/v1/generate/record-info'
                 : "{$this->apiUrl}/generate/record-info";
 
             Log::info("checkStatus: taskId={$taskId}, apiSource={$apiSource}, url={$checkUrl}");
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . ($apiSource === 'kie' ? config('services.kie.api_key') : $this->apiKey),
+                'Authorization' => 'Bearer '.($apiSource === 'kie' ? config('services.kie.api_key') : $this->apiKey),
                 'Content-Type' => 'application/json',
             ])->timeout(30)->get($checkUrl, [
                 'taskId' => $taskId,
@@ -542,8 +553,7 @@ class SunoService
 
             $data = $response->json();
 
-
-            if (!$response->successful() || ($data['code'] ?? 0) != 200) {
+            if (! $response->successful() || ($data['code'] ?? 0) != 200) {
                 return [
                     'status' => 'error',
                     'error' => $data['msg'] ?? 'API error',
@@ -573,7 +583,7 @@ class SunoService
                     }
                 }
 
-                Log::info('Parsed songs: ' . json_encode($songs));
+                Log::info('Parsed songs: '.json_encode($songs));
 
                 return [
                     'status' => 'completed',
@@ -589,7 +599,8 @@ class SunoService
             // PENDING, PROCESSING, TEXT_SUCCESS, FIRST_SUCCESS
             return ['status' => 'processing'];
         } catch (\Exception $e) {
-            Log::error('Suno check status error: ' . $e->getMessage());
+            Log::error('Suno check status error: '.$e->getMessage());
+
             return [
                 'status' => 'error',
                 'error' => $e->getMessage(),
@@ -603,49 +614,53 @@ class SunoService
     private function replaceArtistsInStyle(string $style): string
     {
         $result = $style;
- 
+
         // Сортируем по длине (длинные первыми: "hammali & navai" раньше "navai")
         $artists = array_keys($this->artistStyleMap);
-        usort($artists, fn($a, $b) => mb_strlen($b) - mb_strlen($a));
- 
+        usort($artists, fn ($a, $b) => mb_strlen($b) - mb_strlen($a));
+
         foreach ($artists as $artist) {
             $artistNorm = $this->normalizeForSearch($artist);
             $resultNorm = $this->normalizeForSearch($result);
             $artistNormLen = mb_strlen($artistNorm);
- 
+
             // Ищем все вхождения
             $searchPos = 0;
             while (($pos = mb_strpos($resultNorm, $artistNorm, $searchPos)) !== false) {
                 // Проверяем границу слова в НОРМАЛИЗОВАННОЙ строке
-                if (!$this->isWordBoundary($resultNorm, $pos, $artistNormLen)) {
+                if (! $this->isWordBoundary($resultNorm, $pos, $artistNormLen)) {
                     $searchPos = $pos + 1;
+
                     continue;
                 }
- 
+
                 // Нашли на границе слова! Определяем длину в оригинале
                 $bestLen = $artistNormLen;
                 for ($tryLen = $artistNormLen; $tryLen <= $artistNormLen + 3; $tryLen++) {
-                    if ($pos + $tryLen > mb_strlen($result)) break;
+                    if ($pos + $tryLen > mb_strlen($result)) {
+                        break;
+                    }
                     $chunk = mb_substr($result, $pos, $tryLen);
                     if ($this->normalizeForSearch($chunk) === $artistNorm) {
                         $bestLen = $tryLen;
                         break;
                     }
                 }
- 
+
                 // Заменяем
                 $replacement = $this->artistStyleMap[$artist];
-                $result = mb_substr($result, 0, $pos) . $replacement . mb_substr($result, $pos + $bestLen);
- 
+                $result = mb_substr($result, 0, $pos).$replacement.mb_substr($result, $pos + $bestLen);
+
                 // После замены позиции поехали — выходим из цикла для этого артиста
                 break;
             }
         }
- 
+
         // Чистим
         $result = preg_replace('/\bstyle\b/i', '', $result);
         $result = preg_replace('/,\s*,/', ',', $result);
         $result = preg_replace('/\s+/', ' ', $result);
+
         return trim($result, ' ,');
     }
 
@@ -655,6 +670,7 @@ class SunoService
     private function isRapGenre(string $style): bool
     {
         $lower = mb_strtolower($style);
+
         return str_contains($lower, 'рэп') ||
                str_contains($lower, 'хип-хоп') ||
                str_contains($lower, 'rap') ||
@@ -671,11 +687,11 @@ class SunoService
         $watermarkTag = "\n{$watermarkText}\n";
 
         // В начало
-        $modified = $watermarkTag . $lyrics;
+        $modified = $watermarkTag.$lyrics;
 
         // После каждого припева
         $pattern = '/(\[(?:Chorus|Припев|Drop|Hook).*?\])/i';
-        $modified = preg_replace($pattern, '$1' . $watermarkTag, $modified);
+        $modified = preg_replace($pattern, '$1'.$watermarkTag, $modified);
 
         // В конец
         $modified .= $watermarkTag;
@@ -722,16 +738,16 @@ class SunoService
 
         if ($wordCount < 7) {
             // Чистим от пунктуации
-            $cleanWords = array_map(fn($w) => mb_strtolower(preg_replace('/[^\w]/u', '', $w)), $words);
+            $cleanWords = array_map(fn ($w) => mb_strtolower(preg_replace('/[^\w]/u', '', $w)), $words);
 
             // Ищем слова, которых нет в safe_terms
             $unknown = array_filter($cleanWords, function ($w) {
                 return $w
-                    && !in_array($w, $this->safeTerms)
-                    && !ctype_digit($w);
+                    && ! in_array($w, $this->safeTerms)
+                    && ! ctype_digit($w);
             });
 
-            if (!empty($unknown)) {
+            if (! empty($unknown)) {
                 return true;
             }
         }
@@ -739,7 +755,7 @@ class SunoService
         // 4. Слова с Заглавной Буквы (для длинных текстов)
         if (preg_match_all('/\b[A-ZА-ЯЁ][a-zа-яё]+\b/u', $text, $matches)) {
             foreach ($matches[0] as $word) {
-                if (!in_array(mb_strtolower($word), $this->safeTerms)) {
+                if (! in_array(mb_strtolower($word), $this->safeTerms)) {
                     return true;
                 }
             }
@@ -753,7 +769,7 @@ class SunoService
      */
     private function replaceArtistWithAI(string $style): string
     {
-        $systemPrompt = "Ты — эксперт по музыкальным стилям. Твоя задача — заменить имена артистов на описание их музыкального стиля.
+        $systemPrompt = 'Ты — эксперт по музыкальным стилям. Твоя задача — заменить имена артистов на описание их музыкального стиля.
 
 ПРАВИЛА:
 1. Если в тексте есть имя артиста/группы — замени его на описание стиля (жанр, настроение, особенности звучания)
@@ -763,20 +779,20 @@ class SunoService
 5. Описание стиля пиши на английском
 
 ПРИМЕРЫ:
-Вход: \"Zivert, solo female vocalist\"
-Выход: \"modern russian pop, electronic pop, catchy vocals, dance-pop, solo female vocalist\"
+Вход: "Zivert, solo female vocalist"
+Выход: "modern russian pop, electronic pop, catchy vocals, dance-pop, solo female vocalist"
 
-Вход: \"Eminem style, aggressive\"
-Выход: \"fast rap, lyrical, complex rhymes, aggressive flow, aggressive\"
+Вход: "Eminem style, aggressive"
+Выход: "fast rap, lyrical, complex rhymes, aggressive flow, aggressive"
 
-Вход: \"Pop, energetic, solo male vocalist\"
-Выход: \"Pop, energetic, solo male vocalist\"
+Вход: "Pop, energetic, solo male vocalist"
+Выход: "Pop, energetic, solo male vocalist"
 
-Вход: \"как у Монеточки\"
-Выход: \"indie pop, quirky lyrics, lo-fi vibes, ironic female vocals\"
+Вход: "как у Монеточки"
+Выход: "indie pop, quirky lyrics, lo-fi vibes, ironic female vocals"
 
-Вход: \"в стиле Miyagi и Эндшпиль\"
-Выход: \"reggae rap, chill vibes, melodic hip-hop, positive energy, duo\"";
+Вход: "в стиле Miyagi и Эндшпиль"
+Выход: "reggae rap, chill vibes, melodic hip-hop, positive energy, duo"';
 
         $userPrompt = "Замени артистов на стиль:\n{$style}";
 
@@ -785,7 +801,7 @@ class SunoService
 
             if ($provider === 'openai') {
                 $response = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . config('services.openai.api_key'),
+                    'Authorization' => 'Bearer '.config('services.openai.api_key'),
                     'Content-Type' => 'application/json',
                 ])->timeout(30)->post('https://api.openai.com/v1/chat/completions', [
                     'model' => config('services.openai.model', 'gpt-4o-mini'),
@@ -808,7 +824,7 @@ class SunoService
                     "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}",
                     [
                         'contents' => [
-                            ['parts' => [['text' => $systemPrompt . "\n\n" . $userPrompt]]]
+                            ['parts' => [['text' => $systemPrompt."\n\n".$userPrompt]]],
                         ],
                         'generationConfig' => [
                             'temperature' => 0.3,
@@ -826,12 +842,14 @@ class SunoService
             // Проверяем адекватность
             if ($result && mb_strlen($result) < 500) {
                 Log::info("AI artist replacement: '{$style}' -> '{$result}'");
+
                 return $result;
             }
 
             return $style;
         } catch (\Exception $e) {
-            Log::error('AI artist replacement failed: ' . $e->getMessage());
+            Log::error('AI artist replacement failed: '.$e->getMessage());
+
             return $style;
         }
     }
@@ -854,6 +872,7 @@ class SunoService
             } elseif (str_contains($error, '504')) {
                 return 'Таймаут сервера генерации (504)';
             }
+
             return 'Сервер генерации недоступен';
         }
 
@@ -862,12 +881,11 @@ class SunoService
 
         // Сокращаем
         if (mb_strlen($error) > 200) {
-            $error = mb_substr($error, 0, 200) . '...';
+            $error = mb_substr($error, 0, 200).'...';
         }
 
         return $error;
     }
-
 
     /**
      * Запуск разделения вокала и музыки — как в suno_service.py separate_vocals
@@ -875,93 +893,94 @@ class SunoService
     public function separateVocals(string $originalTaskId, string $audioId): array
     {
         $headers = [
-            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Authorization' => 'Bearer '.$this->apiKey,
             'Content-Type' => 'application/json',
         ];
- 
+
         $payload = [
             'taskId' => $originalTaskId,
             'audioId' => $audioId,
             'type' => 'separate_vocal',
             'callBackUrl' => 'https://example.com/callback',
         ];
- 
+
         Log::info("Vocal separation request: task={$originalTaskId}, audio={$audioId}");
- 
+
         try {
             $response = Http::withHeaders($headers)
                 ->timeout(30)
                 ->post("{$this->apiUrl}/vocal-removal/generate", $payload);
- 
+
             $responseText = $response->body();
-            Log::info("Vocal separation response: " . mb_substr($responseText, 0, 500));
- 
+            Log::info('Vocal separation response: '.mb_substr($responseText, 0, 500));
+
             if ($response->successful()) {
                 $data = $response->json();
- 
+
                 if (($data['code'] ?? 0) == 200) {
                     $newTaskId = $data['data']['taskId'] ?? null;
                     if ($newTaskId) {
                         return ['success' => true, 'task_id' => $newTaskId];
                     }
                 }
- 
+
                 return ['success' => false, 'error' => $data['msg'] ?? 'Unknown error'];
             }
- 
+
             return ['success' => false, 'error' => "HTTP {$response->status()}: {$responseText}"];
- 
+
         } catch (\Exception $e) {
-            Log::error("Vocal separation error: " . $e->getMessage());
+            Log::error('Vocal separation error: '.$e->getMessage());
+
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
- 
+
     /**
      * Проверка статуса разделения — как в suno_service.py check_vocal_separation_status
      */
     public function checkVocalSeparationStatus(string $taskId): array
     {
         $headers = [
-            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Authorization' => 'Bearer '.$this->apiKey,
             'Content-Type' => 'application/json',
         ];
- 
+
         try {
             $response = Http::withHeaders($headers)
                 ->timeout(30)
                 ->get("{$this->apiUrl}/vocal-removal/record-info", [
                     'taskId' => $taskId,
                 ]);
- 
+
             if ($response->status() !== 200) {
                 return ['status' => 'processing'];
             }
- 
+
             $data = $response->json();
- 
-            if (!$data || ($data['code'] ?? 0) !== 200) {
+
+            if (! $data || ($data['code'] ?? 0) !== 200) {
                 return ['status' => 'processing'];
             }
- 
+
             $taskData = $data['data'] ?? null;
-            if (!$taskData) {
+            if (! $taskData) {
                 return ['status' => 'processing'];
             }
- 
+
             $successFlag = $taskData['successFlag'] ?? null;
             $respObj = $taskData['response'] ?? [];
- 
+
             $instUrl = $respObj['instrumentalUrl'] ?? null;
             $vocalUrl = $respObj['vocalUrl'] ?? null;
- 
+
             // Fallback: old format
-            if (!$instUrl) {
+            if (! $instUrl) {
                 $oldInfo = $taskData['vocal_removal_info'] ?? [];
                 $instUrl = $oldInfo['instrumental_url'] ?? $oldInfo['instrumentalUrl'] ?? null;
                 $vocalUrl = $oldInfo['vocal_url'] ?? $oldInfo['vocalUrl'] ?? null;
             }
- 
+
             if ($successFlag === 'SUCCESS' || $instUrl) {
                 return [
                     'status' => 'completed',
@@ -969,23 +988,26 @@ class SunoService
                     'vocal_url' => $vocalUrl ?? '',
                 ];
             }
- 
+
             if (in_array($successFlag, ['FAILED', 'ERROR'])) {
                 $errorMsg = $taskData['errorMessage'] ?? $taskData['error'] ?? 'Unknown error';
+
                 return ['status' => 'failed', 'error' => $errorMsg];
             }
- 
+
             return ['status' => 'processing'];
- 
+
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            Log::warning("Vocal separation status network error: " . $e->getMessage());
+            Log::warning('Vocal separation status network error: '.$e->getMessage());
+
             return ['status' => 'processing'];
         } catch (\Exception $e) {
-            Log::error("Vocal separation status error: " . $e->getMessage());
+            Log::error('Vocal separation status error: '.$e->getMessage());
+
             return ['status' => 'failed', 'error' => $e->getMessage()];
         }
     }
- 
+
     /**
      * Ожидание результата разделения — как в suno_service.py wait_for_vocal_separation
      */
@@ -993,36 +1015,36 @@ class SunoService
     {
         // Начальная задержка 30 сек (как в боте)
         sleep(30);
- 
+
         $elapsed = 30;
         $errorCount = 0;
         $maxErrors = 5;
- 
+
         while ($elapsed < $timeout) {
             try {
                 $result = $this->checkVocalSeparationStatus($taskId);
- 
+
                 if ($result['status'] === 'completed') {
                     return $result;
                 }
                 if ($result['status'] === 'failed') {
                     return $result;
                 }
- 
+
                 $errorCount = 0;
- 
+
             } catch (\Exception $e) {
-                Log::error("Vocal separation loop error: " . $e->getMessage());
+                Log::error('Vocal separation loop error: '.$e->getMessage());
                 $errorCount++;
                 if ($errorCount >= $maxErrors) {
                     return ['status' => 'failed', 'error' => "Too many errors: {$e->getMessage()}"];
                 }
             }
- 
+
             sleep($interval);
             $elapsed += $interval;
         }
- 
+
         return ['status' => 'failed', 'error' => 'Timeout (время ожидания истекло)'];
     }
 
@@ -1032,9 +1054,10 @@ class SunoService
     private function normalizeForSearch(string $text): string
     {
         $lower = mb_strtolower($text);
-        $map = ['ë'=>'e','é'=>'e','è'=>'e','ê'=>'e','ü'=>'u','ö'=>'o',
-                'ä'=>'a','á'=>'a','í'=>'i','ó'=>'o','ú'=>'u','ñ'=>'n',
-                'ø'=>'o','å'=>'a'];
+        $map = ['ë' => 'e', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ü' => 'u', 'ö' => 'o',
+            'ä' => 'a', 'á' => 'a', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ñ' => 'n',
+            'ø' => 'o', 'å' => 'a'];
+
         return str_replace(array_keys($map), array_values($map), $lower);
     }
 
@@ -1048,7 +1071,7 @@ class SunoService
                 return false;
             }
         }
- 
+
         // Символ после
         $afterPos = $pos + $len;
         if ($afterPos < mb_strlen($text)) {
@@ -1057,7 +1080,7 @@ class SunoService
                 return false;
             }
         }
- 
+
         return true;
     }
 
@@ -1072,22 +1095,28 @@ class SunoService
             'name' => $params['name'],
             'description' => $params['description'],
         ];
-        if (!empty($params['style'])) $payload['style'] = $params['style'];
-        if (!empty($params['vocal_start'])) $payload['vocalStart'] = $params['vocal_start'];
-        if (!empty($params['vocal_end'])) $payload['vocalEnd'] = $params['vocal_end'];
+        if (! empty($params['style'])) {
+            $payload['style'] = $params['style'];
+        }
+        if (! empty($params['vocal_start'])) {
+            $payload['vocalStart'] = $params['vocal_start'];
+        }
+        if (! empty($params['vocal_end'])) {
+            $payload['vocalEnd'] = $params['vocal_end'];
+        }
 
-        Log::info("Persona generate request: " . json_encode($payload));
+        Log::info('Persona generate request: '.json_encode($payload));
 
         try {
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Authorization' => 'Bearer '.$this->apiKey,
                 'Content-Type' => 'application/json',
             ])->timeout(30)->post("{$this->apiUrl}/generate/generate-persona", $payload);
 
             $data = $response->json();
-            Log::info("Persona generate response: " . $response->body());
+            Log::info('Persona generate response: '.$response->body());
 
-            if (($data['code'] ?? 0) == 200 && !empty($data['data']['personaId'])) {
+            if (($data['code'] ?? 0) == 200 && ! empty($data['data']['personaId'])) {
                 return [
                     'success' => true,
                     'persona_id' => $data['data']['personaId'],
@@ -1096,10 +1125,333 @@ class SunoService
 
             return ['success' => false, 'error' => $data['msg'] ?? 'Ошибка API'];
         } catch (\Exception $e) {
-            Log::error("Persona generate error: " . $e->getMessage());
+            Log::error('Persona generate error: '.$e->getMessage());
+
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 
+    // ===================================================================
+    //  Операции над треками (extend / cover / instrumental / vocals / ...)
+    //  Все они возвращают { code:200, data:{ taskId } } и отдают результат
+    //  через тот же checkStatus()/record-info, что и обычная генерация.
+    // ===================================================================
 
+    /** Заглушка callback — результат забираем поллингом (как в generateMusic). */
+    private const TRACK_OP_CALLBACK = 'https://example.com/callback';
+
+    /** Базовый URL провайдера по api_source песни. */
+    private function baseUrlFor(?string $apiSource): string
+    {
+        return $apiSource === 'kie'
+            ? rtrim((string) config('services.kie.api_url'), '/')
+            : rtrim($this->apiUrl, '/');
+    }
+
+    /** API-ключ провайдера по api_source песни. */
+    private function authKeyFor(?string $apiSource): string
+    {
+        return $apiSource === 'kie' ? config('services.kie.api_key') : $this->apiKey;
+    }
+
+    /**
+     * Общий POST к endpoint'ам генерации с retry и парсингом taskId.
+     */
+    private function submitGeneration(string $path, array $payload, ?string $apiSource = null): array
+    {
+        $url = $this->baseUrlFor($apiSource).'/'.ltrim($path, '/');
+        $maxRetries = 3;
+        $lastError = null;
+
+        for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+            try {
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer '.$this->authKeyFor($apiSource),
+                    'Content-Type' => 'application/json',
+                ])->timeout(60)->post($url, $payload);
+
+                $status = $response->status();
+                Log::info("TrackOp POST {$path} attempt {$attempt}: status={$status}");
+
+                if (in_array($status, [502, 503, 504])) {
+                    $lastError = "Сервер генерации недоступен (HTTP {$status})";
+                    if ($attempt < $maxRetries) {
+                        sleep(5 * $attempt);
+
+                        continue;
+                    }
+
+                    return ['success' => false, 'error' => $lastError, 'retry_possible' => true];
+                }
+
+                $data = $response->json();
+
+                if ($response->successful() && ($data['code'] ?? 0) == 200) {
+                    $taskId = $data['data']['taskId'] ?? null;
+                    if ($taskId) {
+                        return ['success' => true, 'task_id' => $taskId];
+                    }
+
+                    return ['success' => false, 'error' => 'Не получен ID задачи'];
+                }
+
+                $errorMsg = $data['msg'] ?? ("HTTP {$status}: ".mb_substr($response->body(), 0, 120));
+
+                return ['success' => false, 'error' => $this->cleanErrorMessage($errorMsg)];
+            } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                $lastError = 'Ошибка подключения: '.$e->getMessage();
+                if ($attempt < $maxRetries) {
+                    sleep(5 * $attempt);
+
+                    continue;
+                }
+            } catch (\Exception $e) {
+                Log::error("TrackOp {$path} exception: ".$e->getMessage());
+
+                return ['success' => false, 'error' => $this->cleanErrorMessage($e->getMessage())];
+            }
+        }
+
+        return ['success' => false, 'error' => $lastError ?? 'Не удалось подключиться к серверу генерации', 'retry_possible' => true];
+    }
+
+    /**
+     * Добавляет необязательные общие параметры (vocalGender, negativeTags,
+     * persona, веса) в payload, не перетирая уже заданные ключи.
+     */
+    private function applyCommonOptions(array &$payload, array $params): void
+    {
+        $map = [
+            'vocal_gender' => 'vocalGender',
+            'negative_tags' => 'negativeTags',
+            'persona_id' => 'personaId',
+            'persona_model' => 'personaModel',
+            'style_weight' => 'styleWeight',
+            'weirdness_constraint' => 'weirdnessConstraint',
+            'audio_weight' => 'audioWeight',
+        ];
+
+        foreach ($map as $in => $out) {
+            if (array_key_exists($out, $payload)) {
+                continue;
+            }
+            if (isset($params[$in]) && $params[$in] !== '' && $params[$in] !== null) {
+                $payload[$out] = $params[$in];
+            }
+        }
+    }
+
+    private function defaultModel(): string
+    {
+        return (string) config('services.track_ops.model', 'V5_5');
+    }
+
+    /**
+     * Продление существующего трека (Extend Music).
+     * Нужен audio_id исходного клипа; api_source должен совпадать с источником.
+     */
+    public function extendMusic(array $params): array
+    {
+        $custom = isset($params['continue_at'])
+            || ! empty($params['prompt'])
+            || ! empty($params['style'])
+            || ! empty($params['title']);
+
+        $payload = [
+            'defaultParamFlag' => $custom,
+            'audioId' => $params['audio_id'],
+            'model' => $params['model'] ?? $this->defaultModel(),
+            'callBackUrl' => self::TRACK_OP_CALLBACK,
+        ];
+
+        if ($custom) {
+            if (isset($params['continue_at'])) {
+                $payload['continueAt'] = (float) $params['continue_at'];
+            }
+            if (! empty($params['style'])) {
+                $payload['style'] = mb_substr($params['style'], 0, 1000);
+            }
+            if (! empty($params['title'])) {
+                $payload['title'] = mb_substr($params['title'], 0, 100);
+            }
+            if (! empty($params['prompt'])) {
+                $payload['prompt'] = mb_substr($params['prompt'], 0, 5000);
+            }
+        }
+
+        $this->applyCommonOptions($payload, $params);
+
+        return $this->submitGeneration('generate/extend', $payload, $params['api_source'] ?? null);
+    }
+
+    /**
+     * Кавер на загруженный аудиофайл (Upload & Cover Audio).
+     */
+    public function uploadCover(array $params): array
+    {
+        $custom = $params['custom_mode'] ?? true;
+        $instrumental = (bool) ($params['instrumental'] ?? false);
+
+        $payload = [
+            'uploadUrl' => $params['upload_url'],
+            'customMode' => $custom,
+            'instrumental' => $instrumental,
+            'model' => $params['model'] ?? $this->defaultModel(),
+            'callBackUrl' => self::TRACK_OP_CALLBACK,
+        ];
+
+        if ($custom) {
+            $payload['style'] = mb_substr($params['style'] ?? '', 0, 1000);
+            $payload['title'] = mb_substr($params['title'] ?? '', 0, 100);
+            if (! $instrumental) {
+                $payload['prompt'] = mb_substr($params['prompt'] ?? '', 0, 5000);
+            }
+        } else {
+            $payload['prompt'] = mb_substr($params['prompt'] ?? '', 0, 500);
+        }
+
+        $this->applyCommonOptions($payload, $params);
+
+        return $this->submitGeneration('generate/upload-cover', $payload, $params['api_source'] ?? null);
+    }
+
+    /**
+     * Продление загруженного аудиофайла (Upload & Extend Audio).
+     */
+    public function uploadExtend(array $params): array
+    {
+        $custom = isset($params['continue_at'])
+            || ! empty($params['style'])
+            || ! empty($params['title']);
+
+        $payload = [
+            'uploadUrl' => $params['upload_url'],
+            'defaultParamFlag' => $custom,
+            'model' => $params['model'] ?? $this->defaultModel(),
+            'callBackUrl' => self::TRACK_OP_CALLBACK,
+        ];
+
+        if (isset($params['instrumental'])) {
+            $payload['instrumental'] = (bool) $params['instrumental'];
+        }
+
+        if ($custom) {
+            if (isset($params['continue_at'])) {
+                $payload['continueAt'] = (float) $params['continue_at'];
+            }
+            if (! empty($params['style'])) {
+                $payload['style'] = mb_substr($params['style'], 0, 1000);
+            }
+            if (! empty($params['title'])) {
+                $payload['title'] = mb_substr($params['title'], 0, 100);
+            }
+            if (empty($params['instrumental']) && ! empty($params['prompt'])) {
+                $payload['prompt'] = mb_substr($params['prompt'], 0, 5000);
+            }
+        } elseif (! empty($params['prompt'])) {
+            $payload['prompt'] = mb_substr($params['prompt'], 0, 5000);
+        }
+
+        $this->applyCommonOptions($payload, $params);
+
+        return $this->submitGeneration('generate/upload-extend', $payload, $params['api_source'] ?? null);
+    }
+
+    /**
+     * Превратить вокал/мелодию в инструментал (Add Instrumental).
+     * Поддерживает только V4_5PLUS / V5 / V5_5.
+     */
+    public function addInstrumental(array $params): array
+    {
+        $payload = [
+            'uploadUrl' => $params['upload_url'],
+            'title' => mb_substr($params['title'] ?? '', 0, 100),
+            'tags' => mb_substr($params['tags'] ?? '', 0, 1000),
+            'negativeTags' => mb_substr($params['negative_tags'] ?? '', 0, 1000),
+            'model' => $params['model'] ?? $this->defaultModel(),
+            'callBackUrl' => self::TRACK_OP_CALLBACK,
+        ];
+
+        $this->applyCommonOptions($payload, $params);
+
+        return $this->submitGeneration('generate/add-instrumental', $payload, $params['api_source'] ?? null);
+    }
+
+    /**
+     * Добавить вокал к инструменталу (Add Vocals).
+     * Поддерживает только V4_5PLUS / V5 / V5_5.
+     */
+    public function addVocals(array $params): array
+    {
+        $payload = [
+            'uploadUrl' => $params['upload_url'],
+            'prompt' => mb_substr($params['prompt'] ?? '', 0, 5000),
+            'title' => mb_substr($params['title'] ?? '', 0, 100),
+            'style' => mb_substr($params['style'] ?? '', 0, 1000),
+            'negativeTags' => mb_substr($params['negative_tags'] ?? '', 0, 1000),
+            'model' => $params['model'] ?? $this->defaultModel(),
+            'callBackUrl' => self::TRACK_OP_CALLBACK,
+        ];
+
+        $this->applyCommonOptions($payload, $params);
+
+        return $this->submitGeneration('generate/add-vocals', $payload, $params['api_source'] ?? null);
+    }
+
+    /**
+     * Мэшап двух треков (Generate Mashup). Нужны ровно 2 публичных URL.
+     * Модель mashup НЕ поддерживает V5_5 — по умолчанию V5.
+     */
+    public function mashup(array $params): array
+    {
+        $custom = (bool) ($params['custom_mode'] ?? false);
+        $instrumental = (bool) ($params['instrumental'] ?? false);
+
+        $payload = [
+            'uploadUrlList' => array_values($params['upload_urls']),
+            'customMode' => $custom,
+            'instrumental' => $instrumental,
+            'model' => $params['model'] ?? 'V5',
+            'callBackUrl' => self::TRACK_OP_CALLBACK,
+        ];
+
+        if ($custom) {
+            $payload['style'] = mb_substr($params['style'] ?? '', 0, 1000);
+            $payload['title'] = mb_substr($params['title'] ?? '', 0, 100);
+            if (! $instrumental) {
+                $payload['prompt'] = mb_substr($params['prompt'] ?? '', 0, 5000);
+            }
+        } else {
+            $payload['prompt'] = mb_substr($params['prompt'] ?? '', 0, 3000);
+        }
+
+        $this->applyCommonOptions($payload, $params);
+
+        return $this->submitGeneration('generate/mashup', $payload, $params['api_source'] ?? null);
+    }
+
+    /**
+     * Заменить фрагмент трека (Replace Section). Стоит ~5 кредитов.
+     * Нужны task_id (родительская задача) и audio_id того же провайдера.
+     */
+    public function replaceSection(array $params): array
+    {
+        $payload = [
+            'taskId' => $params['task_id'],
+            'audioId' => $params['audio_id'],
+            'prompt' => mb_substr($params['prompt'] ?? '', 0, 5000),
+            'tags' => mb_substr($params['tags'] ?? '', 0, 1000),
+            'title' => mb_substr($params['title'] ?? '', 0, 100),
+            'fullLyrics' => $params['full_lyrics'] ?? '',
+            'infillStartS' => round((float) $params['infill_start_s'], 2),
+            'infillEndS' => round((float) $params['infill_end_s'], 2),
+            'callBackUrl' => self::TRACK_OP_CALLBACK,
+        ];
+
+        if (! empty($params['negative_tags'])) {
+            $payload['negativeTags'] = mb_substr($params['negative_tags'], 0, 1000);
+        }
+
+        return $this->submitGeneration('generate/replace-section', $payload, $params['api_source'] ?? null);
+    }
 }

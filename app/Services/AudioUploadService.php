@@ -54,68 +54,6 @@ class AudioUploadService
     }
 
     /**
-     * Распознавание текста песни из загруженного файла (OpenAI Whisper).
-     * Принимает публичный URL нашей загрузки (uploads/tracks/...).
-     */
-    public function transcribeFromUrl(string $url): array
-    {
-        $apiKey = config('services.openai.api_key');
-        if (! $apiKey) {
-            return ['success' => false, 'error' => 'Распознавание временно недоступно'];
-        }
-
-        // Разрешаем только наши собственные загрузки
-        $path = parse_url($url, PHP_URL_PATH) ?: '';
-        if (! str_starts_with($path, '/uploads/tracks/')) {
-            return ['success' => false, 'error' => 'Недопустимый источник'];
-        }
-
-        // Файл: локально (driver=local) или скачиваем по URL (driver=s3)
-        $localPath = public_path(ltrim($path, '/'));
-        $tmpPath = null;
-
-        try {
-            if (! is_file($localPath)) {
-                $download = \Illuminate\Support\Facades\Http::timeout(60)->get($url);
-                if (! $download->successful()) {
-                    return ['success' => false, 'error' => 'Файл не найден'];
-                }
-                $tmpPath = tempnam(sys_get_temp_dir(), 'transcribe_').'.'.pathinfo($path, PATHINFO_EXTENSION);
-                file_put_contents($tmpPath, $download->body());
-                $localPath = $tmpPath;
-            }
-
-            $response = \Illuminate\Support\Facades\Http::withToken($apiKey)
-                ->timeout(120)
-                ->attach('file', file_get_contents($localPath), basename($path))
-                ->post('https://api.openai.com/v1/audio/transcriptions', [
-                    'model' => 'whisper-1',
-                ]);
-
-            if ($response->successful()) {
-                $text = trim((string) ($response->json()['text'] ?? ''));
-                if ($text === '') {
-                    return ['success' => false, 'error' => 'Не удалось распознать текст (возможно, инструментал)'];
-                }
-
-                return ['success' => true, 'text' => $text];
-            }
-
-            Log::error('Whisper transcription failed: '.mb_substr($response->body(), 0, 300));
-
-            return ['success' => false, 'error' => 'Ошибка распознавания'];
-        } catch (\Throwable $e) {
-            Log::error('Whisper transcription error: '.$e->getMessage());
-
-            return ['success' => false, 'error' => 'Ошибка распознавания'];
-        } finally {
-            if ($tmpPath && is_file($tmpPath)) {
-                @unlink($tmpPath);
-            }
-        }
-    }
-
-    /**
      * Грубая оценка длительности без внешних зависимостей.
      * Возвращает секунды или null, если определить не удалось.
      */

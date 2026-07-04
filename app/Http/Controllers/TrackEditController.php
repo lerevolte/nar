@@ -64,32 +64,32 @@ class TrackEditController extends Controller
     }
 
     /**
-     * Распознать текст песни из загруженного файла (Whisper).
+     * Лёгкая переработка текста, чтобы обойти copyright-фильтр Suno (413).
      */
-    public function transcribe(Request $request, AudioUploadService $uploads)
+    public function rephrase(Request $request, \App\Services\LyricsGeneratorService $lyrics)
     {
         $user = $this->user($request);
         if ($denied = $this->gate($user)) {
             return $denied;
         }
 
-        $key = 'track-ops-transcribe:'.$user->user_id;
-        if (RateLimiter::tooManyAttempts($key, 10)) {
-            return response()->json(['error' => 'Слишком много распознаваний. Попробуй позже.'], 429);
+        $key = 'track-ops-rephrase:'.$user->user_id;
+        if (RateLimiter::tooManyAttempts($key, 20)) {
+            return response()->json(['error' => 'Слишком много запросов. Попробуй позже.'], 429);
         }
         RateLimiter::hit($key, 3600);
 
         $request->validate([
-            'upload_url' => 'required|string|url|max:1000',
+            'lyrics' => 'required|string|max:5000',
         ]);
 
-        $result = $uploads->transcribeFromUrl($request->input('upload_url'));
+        $result = $lyrics->rephrase($request->input('lyrics'));
 
         if (! $result['success']) {
             return response()->json(['error' => $result['error']], 422);
         }
 
-        return response()->json(['success' => true, 'text' => $result['text']]);
+        return response()->json(['success' => true, 'lyrics' => $result['lyrics']]);
     }
 
     // ---------------------------------------------------------------

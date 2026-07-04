@@ -42,7 +42,7 @@ Route::middleware(['tg.auth', 'miniapp', 'maxapp'])->group(function () {
 
     // Операции над треками (extend / cover / instrumental / vocals / mashup / replace)
     Route::post('/track-ops/upload', [App\Http\Controllers\TrackEditController::class, 'upload']);
-    Route::post('/track-ops/transcribe', [App\Http\Controllers\TrackEditController::class, 'transcribe']);
+    Route::post('/track-ops/rephrase', [App\Http\Controllers\TrackEditController::class, 'rephrase']);
     Route::post('/track-ops/extend', [App\Http\Controllers\TrackEditController::class, 'extend']);
     Route::post('/track-ops/upload-cover', [App\Http\Controllers\TrackEditController::class, 'uploadCover']);
     Route::post('/track-ops/upload-extend', [App\Http\Controllers\TrackEditController::class, 'uploadExtend']);

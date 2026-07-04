@@ -47,7 +47,7 @@ class LyricsGeneratorService
     // === VALID SUNO TAGS for prompt (from suno_tags.py) ===
     private function getValidTagsForPrompt(): string
     {
-        return "STRUCTURE TAGS: [Intro], [Verse], [Verse 1], [Verse 2], [Verse 3], [Pre-Chorus], [Chorus], [Post-Chorus], [Bridge], [Outro], [Hook], [Break], [Drop], [Buildup], [Instrumental], [Instrumental Break], [Interlude], [Solo], [Guitar Solo], [Fade Out], [Fade In]
+        return 'STRUCTURE TAGS: [Intro], [Verse], [Verse 1], [Verse 2], [Verse 3], [Pre-Chorus], [Chorus], [Post-Chorus], [Bridge], [Outro], [Hook], [Break], [Drop], [Buildup], [Instrumental], [Instrumental Break], [Interlude], [Solo], [Guitar Solo], [Fade Out], [Fade In]
 VOCAL STYLE TAGS: [Whisper], [Spoken Word], [Rap], [Harmonies], [Stacked Harmonies], [Falsetto], [Belting], [Growl], [Scream], [Crooning], [Operatic], [Scat], [Anthemic Chorus], [Crowd-style Vocals], [Raspy Lead Vocal], [Autotuned Delivery]
 VOCAL EMOTION TAGS: [Vulnerable], [Powerful], [Soft], [Aggressive], [Melancholic], [Joyful], [Sultry], [Defiant], [Emotional Build-up]
 MOOD TAGS: [Uplifting], [Melancholic], [Haunting], [Dark], [Joyful], [Nostalgic], [Somber], [Romantic], [Intense], [Dreamy], [Peaceful], [Anxious], [Euphoric], [Mysterious], [Aggressive], [Playful], [Epic], [Intimate], [Bittersweet], [Triumphant], [Warm], [Dark Atmosphere], [Bright Atmosphere]
@@ -55,7 +55,7 @@ ENERGY TAGS: [High Energy], [Medium Energy], [Low Energy], [Chill], [Driving], [
 INSTRUMENT TAGS: [Piano], [Electric Piano], [Rhodes], [Organ], [Synth], [Analog Synth], [Synth Pad], [Lead Synth], [Synth Bass], [Acoustic Guitar], [Electric Guitar], [Distorted Guitar], [Guitar Solo], [Bass Guitar], [Slap Bass], [Ukulele], [Banjo], [Drums], [Acoustic Drums], [Electronic Drums], [808s], [808 Bass], [Drum Machine], [Breakbeat], [Percussion], [Saxophone], [Trumpet], [Brass Section], [Flute], [Harmonica], [Accordion], [Violin], [Strings], [String Quartet], [Orchestral Strings], [Cello], [Harp], [Orchestra], [Full Orchestra]
 PRODUCTION TAGS: [Lo-fi], [Gritty], [Clean], [Raw], [Lush], [Sparse], [Atmospheric], [Punchy], [Warm], [Bright], [Polished], [Wide Stereo], [Heavy Distortion], [Reverb Heavy]
 DYNAMIC TAGS: [Crescendo], [Diminuendo], [Forte], [Piano Dynamic], [Sforzando]
-SOUND EFFECTS: [Rain], [Thunder], [Wind], [Ocean Waves], [Fire Crackling], [Birds Chirping], [City Ambience], [Applause], [Record Scratch], [Silence], [Vinyl Crackle], [Risers], [Impacts]";
+SOUND EFFECTS: [Rain], [Thunder], [Wind], [Ocean Waves], [Fire Crackling], [Birds Chirping], [City Ambience], [Applause], [Record Scratch], [Silence], [Vinyl Crackle], [Risers], [Impacts]';
     }
 
     // === Mood tags recommended per genre (from suno_tags.py) ===
@@ -79,6 +79,7 @@ SOUND EFFECTS: [Rain], [Thunder], [Wind], [Ocean Waves], [Fire Crackling], [Bird
             'latin' => ['Intense', 'Romantic', 'Joyful', 'High Energy', 'Driving', 'Sultry'],
             'kids' => ['Playful', 'Joyful', 'Uplifting', 'Bright Atmosphere', 'Warm'],
         ];
+
         return $map[$key] ?? ['Uplifting', 'Melancholic', 'Haunting', 'Dark', 'Joyful', 'Nostalgic'];
     }
 
@@ -102,6 +103,7 @@ SOUND EFFECTS: [Rain], [Thunder], [Wind], [Ocean Waves], [Fire Crackling], [Bird
             'latin' => ['Percussion', 'Acoustic Guitar', 'Brass Section', 'Congas'],
             'kids' => ['Piano', 'Ukulele', 'Acoustic Guitar', 'Tambourine'],
         ];
+
         return $map[$key] ?? ['Piano', 'Drums', 'Bass Guitar'];
     }
 
@@ -310,7 +312,8 @@ Output ONLY the formatted lyrics with tags, no explanations.';
 
             return $parsed;
         } catch (\Exception $e) {
-            Log::error('Lyrics generation error: ' . $e->getMessage());
+            Log::error('Lyrics generation error: '.$e->getMessage());
+
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
@@ -337,9 +340,47 @@ RULES:
 
         try {
             $result = $this->aiGenerate($systemPrompt, $userPrompt);
+
             return ['success' => true, 'lyrics' => trim($result)];
         } catch (\Exception $e) {
-            Log::error('Translation error: ' . $e->getMessage());
+            Log::error('Translation error: '.$e->getMessage());
+
+            return ['success' => false, 'error' => $e->getMessage(), 'lyrics' => $lyrics];
+        }
+    }
+
+    /**
+     * Лёгкая переработка текста, чтобы обойти copyright-фингерпринт Suno
+     * (413 «matches an existing recording»). Сохраняем смысл, структуру,
+     * рифму и язык — меняем формулировки достаточно, чтобы не совпадать
+     * с оригиналом дословно.
+     */
+    public function rephrase(string $lyrics): array
+    {
+        $isRussian = (bool) preg_match('/[а-яА-ЯёЁ]/u', $lyrics);
+        $lang = $isRussian ? 'Russian' : 'English';
+
+        $systemPrompt = "You are a professional songwriter doing a legal cover rewrite.
+Rewrite the given lyrics so they are NOT word-for-word identical to the original,
+but keep the SAME meaning, mood, story, rhyme scheme, structure and language ({$lang}).
+
+RULES:
+1. Change enough wording/phrasing on every line so it is not a verbatim copy,
+   but a listener should still recognize the same song's meaning and feel.
+2. Keep the same number of lines and overall structure.
+3. Keep the LYRICS TEXT in {$lang}.
+4. Keep any [tags] in English exactly as they are; do not translate or invent tags.
+5. Output ONLY the rewritten lyrics, nothing else.";
+
+        $userPrompt = "Original lyrics:\n{$lyrics}";
+
+        try {
+            $result = $this->aiGenerate($systemPrompt, $userPrompt);
+
+            return ['success' => true, 'lyrics' => trim($result)];
+        } catch (\Exception $e) {
+            Log::error('Rephrase error: '.$e->getMessage());
+
             return ['success' => false, 'error' => $e->getMessage(), 'lyrics' => $lyrics];
         }
     }
@@ -406,7 +447,8 @@ ALL tags must be valid Suno tags in English.";
 
             return $parsed;
         } catch (\Exception $e) {
-            Log::error('Lyrics improve error: ' . $e->getMessage());
+            Log::error('Lyrics improve error: '.$e->getMessage());
+
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
@@ -418,6 +460,7 @@ ALL tags must be valid Suno tags in English.";
     {
         try {
             $result = $this->aiGenerate($this->structurePrompt, $text);
+
             return ['success' => true, 'lyrics' => trim($result)];
         } catch (\Exception $e) {
             return ['success' => false, 'lyrics' => $text, 'error' => $e->getMessage()];
@@ -430,7 +473,9 @@ ALL tags must be valid Suno tags in English.";
     public function generateTitleFromLyrics(string $lyrics): string
     {
         $sample = mb_substr($lyrics, 0, 500);
-        if (empty(trim($sample))) return 'Моя песня';
+        if (empty(trim($sample))) {
+            return 'Моя песня';
+        }
 
         $isRussian = (bool) preg_match('/[а-яА-ЯёЁ]/u', $sample);
         $langInstr = $isRussian
@@ -451,11 +496,11 @@ RULES:
             $title = trim($result);
             $title = trim($title, " \t\n\r\0\x0B\"'");
             $title = preg_replace('/^[\x{201C}\x{201D}\x{2018}\x{2019}\x{AB}\x{BB}]+|[\x{201C}\x{201D}\x{2018}\x{2019}\x{AB}\x{BB}]+$/u', '', $title);
-            if ($title && mb_strlen($title) < 100 && !in_array(mb_strtolower($title), ['моя песня', 'my song', 'untitled'])) {
+            if ($title && mb_strlen($title) < 100 && ! in_array(mb_strtolower($title), ['моя песня', 'my song', 'untitled'])) {
                 return $title;
             }
         } catch (\Exception $e) {
-            Log::warning('generateTitleFromLyrics error: ' . $e->getMessage());
+            Log::warning('generateTitleFromLyrics error: '.$e->getMessage());
         }
 
         return 'Моя песня';
@@ -483,7 +528,9 @@ RULES:
 
     private function buildGenderInstruction(?string $vocalGender, string $language): string
     {
-        if (!$vocalGender || $vocalGender === 'random') return '';
+        if (! $vocalGender || $vocalGender === 'random') {
+            return '';
+        }
 
         $langNote = '';
         if (in_array(strtolower($language), ['russian', 'русский', 'ru'])) {
@@ -492,8 +539,8 @@ RULES:
 
         if ($vocalGender === 'm') {
             return "\n\nIMPORTANT: Write the song from a MALE perspective.{$langNote}"
-                . ' Add [Male Vocal] tag at the very first line of the lyrics, before any other tags.'
-                . ' Do NOT add [Female Vocal], [Woman] or other female tags.';
+                .' Add [Male Vocal] tag at the very first line of the lyrics, before any other tags.'
+                .' Do NOT add [Female Vocal], [Woman] or other female tags.';
         }
 
         if ($vocalGender === 'f') {
@@ -501,24 +548,25 @@ RULES:
             if (in_array(strtolower($language), ['russian', 'русский', 'ru'])) {
                 $langNoteF = ' Use appropriate Russian grammatical gender (feminine verb endings, pronouns).';
             }
+
             return "\n\nIMPORTANT: Write the song from a FEMALE perspective.{$langNoteF}"
-                . ' Add [Female Vocal] tag at the very first line of the lyrics, before any other tags.'
-                . ' Do NOT add [Male Vocal], [Man] or other male tags.';
+                .' Add [Female Vocal] tag at the very first line of the lyrics, before any other tags.'
+                .' Do NOT add [Male Vocal], [Man] or other male tags.';
         }
 
         if ($vocalGender === 'duet') {
             return "\n\nIMPORTANT: This is a DUET song between a man and a woman."
-                . "\n\nUse EXACTLY these voice tags:"
-                . "\n[Male Vocal] — before parts sung by the man"
-                . "\n[Female Vocal] — before parts sung by the woman"
-                . "\n[Both] — before parts they sing together"
-                . "\n\nSTRUCTURE RULES:"
-                . "\n- Start with [duet man and woman] tag on the very first line"
-                . "\n- Every section MUST begin with [Male Vocal], [Female Vocal], or [Both]"
-                . "\n- Alternate voices: don't give more than 2 consecutive sections to one voice"
-                . "\n- Use [Both] for choruses and emotional climaxes"
-                . "\n- You can combine voice tag with mood: [Male Vocal] [Verse 1 | Warm]"
-                . $langNote;
+                ."\n\nUse EXACTLY these voice tags:"
+                ."\n[Male Vocal] — before parts sung by the man"
+                ."\n[Female Vocal] — before parts sung by the woman"
+                ."\n[Both] — before parts they sing together"
+                ."\n\nSTRUCTURE RULES:"
+                ."\n- Start with [duet man and woman] tag on the very first line"
+                ."\n- Every section MUST begin with [Male Vocal], [Female Vocal], or [Both]"
+                ."\n- Alternate voices: don't give more than 2 consecutive sections to one voice"
+                ."\n- Use [Both] for choruses and emotional climaxes"
+                ."\n- You can combine voice tag with mood: [Male Vocal] [Verse 1 | Warm]"
+                .$langNote;
         }
 
         return '';
@@ -526,7 +574,7 @@ RULES:
 
     private function buildGenderPreservationInstruction(?string $vocalGender, string $lang): string
     {
-        if (!$vocalGender || $vocalGender === 'random') {
+        if (! $vocalGender || $vocalGender === 'random') {
             return 'Keep any existing voice tags ([Male Vocal], [Female Vocal], etc.) if present in the text.';
         }
         if ($vocalGender === 'm') {
@@ -538,6 +586,7 @@ RULES:
         if ($vocalGender === 'duet') {
             return 'THIS IS A DUET (man and woman). The text MUST start with [duet man and woman] tag. Every section MUST begin with [Male Vocal], [Female Vocal], or [Both]. KEEP the alternation of voices as in the original. Do NOT remove or merge [Male Vocal]/[Female Vocal]/[Both] tags.';
         }
+
         return '';
     }
 
@@ -549,29 +598,35 @@ RULES:
             'duet' => 'Дуэт (мужчина + женщина)',
             'random' => 'Случайный',
         ];
+
         return $labels[$vocalGender] ?? 'Не указан';
     }
 
     private function ensureGenderTags(string $lyrics, ?string $vocalGender, string $originalLyrics): string
     {
-        if (!$vocalGender || $vocalGender === 'random') return $lyrics;
+        if (! $vocalGender || $vocalGender === 'random') {
+            return $lyrics;
+        }
 
         if ($vocalGender === 'm') {
-            if (!preg_match('/\[Male Vocal\]/i', $lyrics)) {
-                $lyrics = "[Male Vocal]\n\n" . ltrim($lyrics);
+            if (! preg_match('/\[Male Vocal\]/i', $lyrics)) {
+                $lyrics = "[Male Vocal]\n\n".ltrim($lyrics);
             }
+
             return $lyrics;
         }
         if ($vocalGender === 'f') {
-            if (!preg_match('/\[Female Vocal\]/i', $lyrics)) {
-                $lyrics = "[Female Vocal]\n\n" . ltrim($lyrics);
+            if (! preg_match('/\[Female Vocal\]/i', $lyrics)) {
+                $lyrics = "[Female Vocal]\n\n".ltrim($lyrics);
             }
+
             return $lyrics;
         }
         if ($vocalGender === 'duet') {
-            if (!preg_match('/\[duet man and woman\]/i', $lyrics)) {
-                $lyrics = "[duet man and woman]\n\n" . ltrim($lyrics);
+            if (! preg_match('/\[duet man and woman\]/i', $lyrics)) {
+                $lyrics = "[duet man and woman]\n\n".ltrim($lyrics);
             }
+
             return $lyrics;
         }
 
@@ -584,7 +639,9 @@ RULES:
 
     public static function prepareLyricsForUser(string $lyrics): string
     {
-        if (empty($lyrics)) return $lyrics;
+        if (empty($lyrics)) {
+            return $lyrics;
+        }
 
         $result = $lyrics;
 
@@ -649,7 +706,8 @@ RULES:
             $translated = array_map(function ($part) use ($tagMap) {
                 return $tagMap[$part] ?? $part;
             }, $parts);
-            return '[' . implode(' | ', $translated) . ']';
+
+            return '['.implode(' | ', $translated).']';
         }, $result);
 
         $result = preg_replace('/\n{3,}/', "\n\n", $result);
@@ -663,7 +721,9 @@ RULES:
 
     public static function prepareLyricsForSuno(string $lyrics, ?string $vocalGender = null): string
     {
-        if (empty($lyrics)) return $lyrics;
+        if (empty($lyrics)) {
+            return $lyrics;
+        }
 
         $result = $lyrics;
 
@@ -697,17 +757,18 @@ RULES:
             $enParts = array_map(function ($part) use ($ruToEn) {
                 return $ruToEn[$part] ?? $part;
             }, $parts);
-            return '[' . implode(' | ', $enParts) . ']';
+
+            return '['.implode(' | ', $enParts).']';
         }, $result);
 
         // Add voice/gender tags
         if ($vocalGender === 'f') {
-            $result = "[Female Vocal]\n\n" . $result;
+            $result = "[Female Vocal]\n\n".$result;
         } elseif ($vocalGender === 'm') {
-            $result = "[Male Vocal]\n\n" . $result;
+            $result = "[Male Vocal]\n\n".$result;
         } elseif ($vocalGender === 'duet') {
             if (stripos($result, '[duet man and woman]') === false) {
-                $result = "[duet man and woman]\n\n" . $result;
+                $result = "[duet man and woman]\n\n".$result;
             }
         }
 
@@ -726,22 +787,39 @@ RULES:
         $g = mb_strtolower($genre);
         $key = null;
 
-        if ($this->containsAny($g, ['метал', 'metal', 'heavy'])) $key = 'metal';
-        elseif ($this->containsAny($g, ['блюз', 'blues'])) $key = 'blues';
-        elseif ($this->containsAny($g, ['детск', 'kids', 'child'])) $key = 'kids';
-        elseif ($this->containsAny($g, ['инди', 'indie'])) $key = 'indie';
-        elseif ($this->containsAny($g, ['диско', 'disco'])) $key = 'disco';
-        elseif ($this->containsAny($g, ['фолк', 'folk'])) $key = 'folk';
-        elseif ($this->containsAny($g, ['латино', 'latin', 'reggaeton'])) $key = 'latin';
-        elseif ($this->containsAny($g, ['регги', 'reggae'])) $key = 'reggae';
-        elseif ($this->containsAny($g, ['кантри', 'country'])) $key = 'country';
-        elseif ($this->containsAny($g, ['r&b', 'rnb', 'соул', 'soul'])) $key = 'rnb';
-        elseif ($this->containsAny($g, ['электро', 'electro', 'edm', 'house', 'techno', 'dance'])) $key = 'electronic';
-        elseif ($this->containsAny($g, ['рэп', 'хип', 'rap', 'hip', 'trap', 'drill', 'phonk'])) $key = 'rap';
-        elseif ($this->containsAny($g, ['рок', 'rock', 'punk', 'grunge'])) $key = 'rock';
-        elseif ($this->containsAny($g, ['шансон', 'chanson'])) $key = 'shanson';
-        elseif ($this->containsAny($g, ['джаз', 'jazz'])) $key = 'jazz';
-        elseif ($this->containsAny($g, ['поп', 'pop'])) $key = 'pop';
+        if ($this->containsAny($g, ['метал', 'metal', 'heavy'])) {
+            $key = 'metal';
+        } elseif ($this->containsAny($g, ['блюз', 'blues'])) {
+            $key = 'blues';
+        } elseif ($this->containsAny($g, ['детск', 'kids', 'child'])) {
+            $key = 'kids';
+        } elseif ($this->containsAny($g, ['инди', 'indie'])) {
+            $key = 'indie';
+        } elseif ($this->containsAny($g, ['диско', 'disco'])) {
+            $key = 'disco';
+        } elseif ($this->containsAny($g, ['фолк', 'folk'])) {
+            $key = 'folk';
+        } elseif ($this->containsAny($g, ['латино', 'latin', 'reggaeton'])) {
+            $key = 'latin';
+        } elseif ($this->containsAny($g, ['регги', 'reggae'])) {
+            $key = 'reggae';
+        } elseif ($this->containsAny($g, ['кантри', 'country'])) {
+            $key = 'country';
+        } elseif ($this->containsAny($g, ['r&b', 'rnb', 'соул', 'soul'])) {
+            $key = 'rnb';
+        } elseif ($this->containsAny($g, ['электро', 'electro', 'edm', 'house', 'techno', 'dance'])) {
+            $key = 'electronic';
+        } elseif ($this->containsAny($g, ['рэп', 'хип', 'rap', 'hip', 'trap', 'drill', 'phonk'])) {
+            $key = 'rap';
+        } elseif ($this->containsAny($g, ['рок', 'rock', 'punk', 'grunge'])) {
+            $key = 'rock';
+        } elseif ($this->containsAny($g, ['шансон', 'chanson'])) {
+            $key = 'shanson';
+        } elseif ($this->containsAny($g, ['джаз', 'jazz'])) {
+            $key = 'jazz';
+        } elseif ($this->containsAny($g, ['поп', 'pop'])) {
+            $key = 'pop';
+        }
 
         $baseInstruction = $this->genreRules[$key ?? 'default'] ?? $this->genreRules['default'];
         $resolvedKey = $key ?? 'default';
@@ -749,8 +827,8 @@ RULES:
         $moodTags = $this->getMoodTagsForGenre($resolvedKey);
         $instrTags = $this->getInstrumentTagsForGenre($resolvedKey);
 
-        $moodStr = implode(', ', array_map(fn($t) => "[{$t}]", $moodTags));
-        $instrStr = implode(', ', array_map(fn($t) => "[{$t}]", $instrTags));
+        $moodStr = implode(', ', array_map(fn ($t) => "[{$t}]", $moodTags));
+        $instrStr = implode(', ', array_map(fn ($t) => "[{$t}]", $instrTags));
 
         return "{$baseInstruction}\nRECOMMENDED MOOD/ENERGY TAGS for this genre: {$moodStr}\nRECOMMENDED INSTRUMENT context for this genre: {$instrStr}\nPick 1-2 mood tags per section from this list. Do NOT use all at once.";
     }
@@ -758,8 +836,11 @@ RULES:
     private function containsAny(string $haystack, array $needles): bool
     {
         foreach ($needles as $needle) {
-            if (str_contains($haystack, $needle)) return true;
+            if (str_contains($haystack, $needle)) {
+                return true;
+            }
         }
+
         return false;
     }
 
@@ -772,6 +853,7 @@ RULES:
         if ($this->provider === 'openai') {
             return $this->generateWithOpenAI($systemPrompt, $userPrompt);
         }
+
         return $this->generateWithGemini($systemPrompt, $userPrompt);
     }
 
@@ -798,12 +880,12 @@ RULES:
         }
 
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $apiKey,
+            'Authorization' => 'Bearer '.$apiKey,
             'Content-Type' => 'application/json',
         ])->timeout(120)->post('https://api.openai.com/v1/chat/completions', $payload);
 
-        if (!$response->successful()) {
-            throw new \Exception('OpenAI API error: ' . $response->body());
+        if (! $response->successful()) {
+            throw new \Exception('OpenAI API error: '.$response->body());
         }
 
         return $response->json('choices.0.message.content', '');
@@ -819,13 +901,13 @@ RULES:
         ])->timeout(120)->post(
             "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}",
             [
-                'contents' => [['parts' => [['text' => $systemPrompt . "\n\n" . $userPrompt]]]],
+                'contents' => [['parts' => [['text' => $systemPrompt."\n\n".$userPrompt]]]],
                 'generationConfig' => ['temperature' => 0.85, 'maxOutputTokens' => 2000],
             ]
         );
 
-        if (!$response->successful()) {
-            throw new \Exception('Gemini API error: ' . $response->body());
+        if (! $response->successful()) {
+            throw new \Exception('Gemini API error: '.$response->body());
         }
 
         return $response->json('candidates.0.content.parts.0.text', '');
@@ -834,8 +916,11 @@ RULES:
     private function shouldUseNewParam(string $model): bool
     {
         foreach ($this->newParamModels as $newModel) {
-            if (str_contains(strtolower($model), strtolower($newModel))) return true;
+            if (str_contains(strtolower($model), strtolower($newModel))) {
+                return true;
+            }
         }
+
         return false;
     }
 
@@ -887,7 +972,7 @@ RULES:
             $lyrics = trim($m[1]);
         }
 
-        if (!$lyrics && preg_match('/\[(Куплет|Verse|Chorus|Припев|Bridge|Бридж|Outro|Intro|Male Voice|Female Voice|Duet)/iu', $cleanText)) {
+        if (! $lyrics && preg_match('/\[(Куплет|Verse|Chorus|Припев|Bridge|Бридж|Outro|Intro|Male Voice|Female Voice|Duet)/iu', $cleanText)) {
             if (preg_match('/(\[(?:Куплет|Verse|Chorus|Припев|Bridge|Бридж|Outro|Intro|Hook|Pre-Chorus|Предприпев|Male Voice|Female Voice|Duet).*?\].*)/siu', $cleanText, $tagMatch)) {
                 $lyrics = trim($tagMatch[1]);
             }
@@ -899,7 +984,9 @@ RULES:
             $lyrics = trim($lyrics);
         }
 
-        if (!$lyrics) $lyrics = $cleanText;
+        if (! $lyrics) {
+            $lyrics = $cleanText;
+        }
 
         return ['success' => true, 'title' => $title, 'lyrics' => $lyrics, 'comment' => $comment];
     }

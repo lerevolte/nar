@@ -215,9 +215,10 @@
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                 body: JSON.stringify({ entry_id: entryId }),
             });
-            if (!response.ok) throw new Error('Ошибка сети');
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) { throw new Error(data.error || 'Ошибка'); }
             countEl.textContent = currentCount + (isVoted ? -1 : 1);
-        } catch (e) { alert('Голосовать могут только пользователи, совершившие покупку'); btn.classList.toggle('voted'); }
+        } catch (e) { alert(e.message || 'Ошибка'); btn.classList.toggle('voted'); }
     }
 
     async function removeFromChart(songId) {

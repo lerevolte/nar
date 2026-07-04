@@ -173,8 +173,16 @@
             btn.classList.toggle('voted');
             countEl.textContent = parseInt(countEl.textContent) + (isVoted ? -1 : 1);
             const r = await fetch(`/api/charts/${isVoted?'unvote':'vote'}`, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'}, body:JSON.stringify({entry_id:entryId}) });
-            if (!r.ok) throw new Error();
-        } catch(e) { btn.classList.remove('active');alert('Голосовать могут только пользователи, совершившие покупку'); }
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok || !d.success) { throw new Error(d.error || 'Ошибка'); }
+        } catch(e) {
+            // откатываем оптимистичное обновление
+            btn.classList.toggle('voted');
+            const countEl = document.getElementById(`votes-${entryId}`);
+            const isVotedNow = btn.classList.contains('voted');
+            countEl.textContent = parseInt(countEl.textContent) + (isVotedNow ? 1 : -1);
+            alert(e.message || 'Ошибка');
+        }
     }
     @endif
 </script>

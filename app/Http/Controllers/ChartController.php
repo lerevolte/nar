@@ -144,7 +144,7 @@ class ChartController extends Controller
     /**
      * Голосование за песню
      */
-    public function vote(Request $request)
+    public function vote(Request $request, ChartService $chartService)
     {
         $request->validate([
             'entry_id' => 'required|integer',
@@ -169,15 +169,6 @@ class ChartController extends Controller
             return response()->json(['error' => 'Нельзя голосовать за свои песни'], 400);
         }
 
-        // Голосовать могут только пользователи с покупками
-        $hasPurchases = \App\Models\Payment::where('user_id', $user->user_id)
-            ->where('status', 'succeeded')
-            ->exists();
-
-        if (! $hasPurchases) {
-            return response()->json(['error' => 'Голосовать могут только пользователи, совершившие покупку'], 403);
-        }
-
         // Проверяем что ещё не голосовал за эту песню
         $existingVote = ChartVote::where('chart_entry_id', $entryId)
             ->where('user_id', $user->user_id)
@@ -196,11 +187,20 @@ class ChartController extends Controller
             return response()->json(['error' => 'Лимит голосов на сегодня исчерпан (10 в день)'], 400);
         }
 
+        // Защита от накрутки: возраст аккаунта, IP и устройство
+        $ip = $request->ip();
+        $deviceId = $request->attributes->get('device_id');
+        if ($reason = $chartService->voteRejectionReason($user, $ip, $deviceId, $entry->song_id)) {
+            return response()->json(['error' => $reason], 403);
+        }
+
         // Создаём голос
-        DB::transaction(function () use ($entry, $user, $entryId) {
+        DB::transaction(function () use ($entry, $user, $entryId, $ip, $deviceId) {
             ChartVote::create([
                 'chart_entry_id' => $entryId,
                 'user_id' => $user->user_id,
+                'ip_address' => $ip,
+                'device_id' => $deviceId,
             ]);
 
             $entry->increment('votes_count');
@@ -390,7 +390,7 @@ class ChartController extends Controller
     /**
      * Голосование в чарте за всё время
      */
-    public function voteAllTime(Request $request)
+    public function voteAllTime(Request $request, ChartService $chartService)
     {
         $request->validate([
             'song_id' => 'required|integer',
@@ -420,15 +420,6 @@ class ChartController extends Controller
             return response()->json(['error' => 'Нельзя голосовать за свои песни'], 400);
         }
 
-        // Голосовать могут только пользователи с покупками
-        $hasPurchases = \App\Models\Payment::where('user_id', $user->user_id)
-            ->where('status', 'succeeded')
-            ->exists();
-
-        if (! $hasPurchases) {
-            return response()->json(['error' => 'Голосовать могут только пользователи, совершившие покупку'], 403);
-        }
-
         // Проверяем, голосовал ли уже за любой entry этой песни
         $existingVote = ChartVote::where('user_id', $user->user_id)
             ->whereIn('chart_entry_id', function ($query) use ($songId) {
@@ -451,11 +442,20 @@ class ChartController extends Controller
             return response()->json(['error' => 'Лимит голосов на сегодня исчерпан (10 в день)'], 400);
         }
 
+        // Защита от накрутки: возраст аккаунта, IP и устройство
+        $ip = $request->ip();
+        $deviceId = $request->attributes->get('device_id');
+        if ($reason = $chartService->voteRejectionReason($user, $ip, $deviceId, $songId)) {
+            return response()->json(['error' => $reason], 403);
+        }
+
         // Создаём голос
-        DB::transaction(function () use ($entry, $user) {
+        DB::transaction(function () use ($entry, $user, $ip, $deviceId) {
             ChartVote::create([
                 'chart_entry_id' => $entry->id,
                 'user_id' => $user->user_id,
+                'ip_address' => $ip,
+                'device_id' => $deviceId,
             ]);
 
             $entry->increment('votes_count');

@@ -18,8 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'maxapp' => \App\Http\Middleware\DetectMaxApp::class,
             'telegram.auth.optional' => \App\Http\Middleware\OptionalTelegramAuth::class,
         ]);
-        
-        $middleware->encryptCookies(except: ['tg_session', 'miniapp', 'maxapp']);
+
+        // Идентификатор устройства для защиты голосования по чартам от накрутки
+        $middleware->append(\App\Http\Middleware\EnsureDeviceId::class);
+
+        $middleware->encryptCookies(except: ['tg_session', 'miniapp', 'maxapp', 'did']);
 
     })
     ->withExceptions(function (Exceptions $exceptions) {

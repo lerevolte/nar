@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Chart;
 use App\Models\ChartEntry;
 use App\Models\ChartReward;
+use App\Models\ChartVote;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,16 @@ use Illuminate\Support\Facades\Log;
 
 class ChartService
 {
+    /**
+     * Минимальный возраст аккаунта (в днях), с которого разрешено голосовать.
+     */
+    public const MIN_ACCOUNT_AGE_DAYS = 10;
+
+    /**
+     * Максимум голосов с одного IP-адреса за сутки (по всем аккаунтам).
+     */
+    public const IP_DAILY_LIMIT = 15;
+
     /**
      * Призы по местам (песни на баланс)
      */
@@ -55,6 +66,7 @@ class ChartService
         if ($chart && $chart->theme && isset(self::THEME_REWARDS[$chart->theme])) {
             return self::THEME_REWARDS[$chart->theme];
         }
+
         return self::REWARDS;
     }
 
@@ -73,9 +85,11 @@ class ChartService
             if ($chart->isExpired()) {
                 // Закрываем и выдаём призы
                 $this->closeChart($chart);
+
                 // Создаём новый
                 return $this->createWeeklyChart();
             }
+
             return $chart;
         }
 
@@ -95,8 +109,10 @@ class ChartService
         if ($chart) {
             if ($chart->isExpired()) {
                 $this->closeChart($chart);
+
                 return null; // Чарт завершён
             }
+
             return $chart;
         }
 
@@ -109,18 +125,18 @@ class ChartService
     public function createValentineChart(): Chart
     {
         $year = now()->year;
-        
+
         // Проверяем, не создан ли уже
         $existing = Chart::where('theme', 'valentine')
             ->where('slug', "valentine-{$year}")
             ->first();
-            
+
         if ($existing) {
             return $existing;
         }
 
         return Chart::create([
-            'name' => "Песни о любви 💕",
+            'name' => 'Песни о любви 💕',
             'slug' => "valentine-{$year}",
             'period' => 'theme',
             'theme' => 'valentine',
@@ -138,7 +154,7 @@ class ChartService
     public function createWeeklyChart(): Chart
     {
         $now = Carbon::now();
-        
+
         // Проверяем, есть ли уже завершённые чарты (это не первый чарт)
         $hasCompletedCharts = Chart::where('is_active', false)
             ->where('period', 'weekly')
@@ -153,12 +169,12 @@ class ChartService
             // Первый чарт: начинается сейчас, заканчивается в СЛЕДУЮЩЕЕ воскресенье
             $startsAt = $now->copy();
             $endsAt = $now->copy()->endOfWeek()->addWeek()->endOfDay();
-            
+
             // Если сегодня воскресенье — берём следующее воскресенье
             if ($now->isSunday()) {
                 $endsAt = $now->copy()->addWeek()->endOfDay();
             }
-            
+
             $weekNumber = $endsAt->weekOfYear;
         }
 
@@ -179,13 +195,14 @@ class ChartService
      */
     public function closeChart(Chart $chart): array
     {
-        if (!$chart->is_active) {
+        if (! $chart->is_active) {
             return ['status' => 'already_closed'];
         }
 
         // Проверяем, не выданы ли уже награды
         if ($chart->hasRewards()) {
             $chart->update(['is_active' => false]);
+
             return ['status' => 'rewards_already_given'];
         }
 
@@ -236,7 +253,7 @@ class ChartService
                         'song' => $entry->song->title,
                         'author' => $entry->user->first_name ?? $entry->user->username ?? 'Автор',
                         'votes' => $entry->votes_count,
-                        'audio_url' => $entry->song->file_path
+                        'audio_url' => $entry->song->file_path,
                     ];
 
                     // Отправляем уведомление победителю
@@ -257,7 +274,7 @@ class ChartService
         });
 
         // Отправляем результаты только неактивным пользователям
-        if (!empty($results['winners'])) {
+        if (! empty($results['winners'])) {
             $this->notifyInactiveUsers($chart, $results['winners'], $results['rewards']);
         }
 
@@ -266,7 +283,7 @@ class ChartService
 
     /**
      * Отправить результаты чарта только неактивным пользователям
-     * 
+     *
      * Критерии неактивности (любой из):
      * 1. Есть только черновик, обновлённый > 7 дней назад (нет готовых песен)
      * 2. Последняя активность > 7 дней назад
@@ -281,10 +298,11 @@ class ChartService
 
         if (empty($inactiveUserIds)) {
             Log::info("Chart {$chart->id}: No inactive users to notify");
+
             return;
         }
 
-        Log::info("Chart {$chart->id}: Notifying " . count($inactiveUserIds) . " inactive users");
+        Log::info("Chart {$chart->id}: Notifying ".count($inactiveUserIds).' inactive users');
 
         $this->telegram->notifyChartResults(
             $inactiveUserIds,
@@ -374,5 +392,63 @@ class ChartService
         }
 
         return ['can_add' => true];
+    }
+
+    /**
+     * Проверка защиты голосования от накрутки.
+     * Возвращает текст ошибки, если голосовать нельзя, либо null — если можно.
+     *
+     * Правила:
+     * 1. Аккаунт должен быть старше MIN_ACCOUNT_AGE_DAYS дней.
+     * 2. За эту песню ещё не голосовали с этого же устройства (другим аккаунтом).
+     * 3. За эту песню ещё не голосовали с этого же IP (другим аккаунтом).
+     * 4. С этого IP за сутки сделано не больше IP_DAILY_LIMIT голосов (по всем аккаунтам).
+     *
+     * Проверки «за свою песню» и «уже голосовал / лимит 10 в день на аккаунт»
+     * выполняются в контроллере отдельно.
+     */
+    public function voteRejectionReason(User $user, ?string $ip, ?string $deviceId, int $songId): ?string
+    {
+        // 1. Возраст аккаунта
+        if ($user->created_at && $user->created_at->gt(now()->subDays(self::MIN_ACCOUNT_AGE_DAYS))) {
+            return 'Голосовать могут аккаунты, зарегистрированные более '.self::MIN_ACCOUNT_AGE_DAYS.' дней назад';
+        }
+
+        $entryIds = ChartEntry::where('song_id', $songId)->pluck('id');
+
+        // 2. Устройство: за эту песню уже голосовали с этого же устройства другим аккаунтом
+        if ($deviceId) {
+            $dupDevice = ChartVote::whereIn('chart_entry_id', $entryIds)
+                ->where('device_id', $deviceId)
+                ->where('user_id', '!=', $user->user_id)
+                ->exists();
+
+            if ($dupDevice) {
+                return 'С этого устройства уже голосовали за эту песню';
+            }
+        }
+
+        if ($ip) {
+            // 3. IP: за эту песню уже голосовали с этого же IP другим аккаунтом
+            $dupIp = ChartVote::whereIn('chart_entry_id', $entryIds)
+                ->where('ip_address', $ip)
+                ->where('user_id', '!=', $user->user_id)
+                ->exists();
+
+            if ($dupIp) {
+                return 'С этого IP-адреса уже голосовали за эту песню';
+            }
+
+            // 4. Суточный лимит голосов с одного IP (по всем аккаунтам)
+            $ipVotesToday = ChartVote::where('ip_address', $ip)
+                ->whereDate('created_at', Carbon::today())
+                ->count();
+
+            if ($ipVotesToday >= self::IP_DAILY_LIMIT) {
+                return 'Слишком много голосов с этого IP-адреса за сегодня';
+            }
+        }
+
+        return null;
     }
 }

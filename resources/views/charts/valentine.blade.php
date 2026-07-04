@@ -741,11 +741,16 @@
                 body: JSON.stringify({ entry_id: entryId }),
             });
 
-            if (!response.ok) throw new Error('Ошибка сети');
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) throw new Error(data.error || 'Ошибка при голосовании');
         } catch (e) {
             console.error(e);
-            alert('Ошибка при голосовании');
-            btn.classList.toggle('voted'); 
+            // откат оптимистичного обновления
+            btn.classList.toggle('voted');
+            const cEl = document.getElementById(`votes-${entryId}`);
+            const votedNow = btn.classList.contains('voted');
+            if (cEl) cEl.textContent = parseInt(cEl.textContent) + (votedNow ? 1 : -1);
+            alert(e.message || 'Ошибка при голосовании');
         }
     }
 

@@ -10,6 +10,8 @@ class ChartVote extends Model
     protected $fillable = [
         'chart_entry_id',
         'user_id',
+        'ip_address',
+        'device_id',
     ];
 
     /**

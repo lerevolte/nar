@@ -105,7 +105,7 @@ class LandingController extends Controller
     /**
      * API: Лайк/анлайк с лендинга (для авторизованных)
      */
-    public function toggleLike(Request $request)
+    public function toggleLike(Request $request, ChartService $chartService)
     {
         $request->validate(['song_id' => 'required|integer']);
 
@@ -160,20 +160,20 @@ class LandingController extends Controller
             ]);
         }
 
-        // Голосовать могут только пользователи с покупками
-        $hasPurchases = \App\Models\Payment::where('user_id', $user->user_id)
-            ->where('status', 'succeeded')
-            ->exists();
-
-        if (! $hasPurchases) {
-            return response()->json(['error' => 'Голосовать могут только пользователи, совершившие покупку'], 403);
+        // Защита от накрутки: возраст аккаунта, IP и устройство
+        $ip = $request->ip();
+        $deviceId = $request->attributes->get('device_id');
+        if ($reason = $chartService->voteRejectionReason($user, $ip, $deviceId, $songId)) {
+            return response()->json(['error' => $reason], 403);
         }
 
         // Добавляем голос
-        DB::transaction(function () use ($entry, $user) {
+        DB::transaction(function () use ($entry, $user, $ip, $deviceId) {
             ChartVote::create([
                 'chart_entry_id' => $entry->id,
                 'user_id' => $user->user_id,
+                'ip_address' => $ip,
+                'device_id' => $deviceId,
             ]);
             $entry->increment('votes_count');
         });

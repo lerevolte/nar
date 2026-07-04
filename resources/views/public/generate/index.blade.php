@@ -1112,25 +1112,6 @@
     <br>
 </div>
 
-@php
-    $trackOpsAllowedIds = config('services.track_ops.allowed_user_ids', []);
-    $trackOpsTeaser = empty($trackOpsAllowedIds)
-        || in_array('*', $trackOpsAllowedIds, true)
-        || in_array((string) ($authUser->user_id ?? ''), $trackOpsAllowedIds, true);
-@endphp
-@if($trackOpsTeaser)
-<div style="max-width:720px;margin:0 auto 24px;padding:0 16px;">
-    <a href="{{ $authUser ? route('studio') : url('/auth') }}" style="display:flex;align-items:center;gap:14px;background:var(--bg-card, #fff);border:1.5px solid rgba(124,58,237,0.25);border-radius:16px;padding:16px 18px;text-decoration:none;color:inherit;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
-        <span style="font-size:30px;">🎚</span>
-        <span style="flex:1;">
-            <span style="display:block;font-size:15px;font-weight:700;">Новое: студия обработки треков</span>
-            <span style="display:block;font-size:13px;opacity:0.7;margin-top:2px;">Кавер в новом стиле, продление, минусовка, новый вокал и мэшап — из своего аудио или готового трека</span>
-        </span>
-        <span style="font-size:18px;color:#7c3aed;">→</span>
-    </a>
-</div>
-@endif
-
 <div class="pg-wizard" id="pg-wizard">
     <div class="pg-progress" id="pg-progress">
         <div class="pg-progress-step active"></div>
@@ -1482,6 +1463,23 @@
         @endif
     </div>
 </div>
+
+@php
+    $trackOpsAllowedIds = config('services.track_ops.allowed_user_ids', []);
+    $trackOpsTeaser = empty($trackOpsAllowedIds)
+        || in_array('*', $trackOpsAllowedIds, true)
+        || in_array((string) ($authUser->user_id ?? ''), $trackOpsAllowedIds, true);
+@endphp
+@if($trackOpsTeaser)
+<div style="max-width:720px;margin:-30px auto 60px;padding:0 16px;">
+    <a href="{{ $authUser ? route('studio') : url('/auth') }}" style="display:block;background:white;border:1.5px solid rgba(124,58,237,0.2);border-radius:24px;padding:24px 28px;text-decoration:none;color:#1a1035;box-shadow:0 4px 16px rgba(0,0,0,0.06);">
+        <span style="display:inline-block;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#7c3aed;background:rgba(124,58,237,0.08);border-radius:999px;padding:4px 12px;margin-bottom:10px;">Новое</span>
+        <span style="display:block;font-size:17px;font-weight:800;">Студия обработки треков</span>
+        <span style="display:block;font-size:14px;opacity:0.65;margin-top:6px;line-height:1.5;">Кавер в новом стиле, продление, минусовка, новый вокал и мэшап — из своего аудио или уже созданного трека</span>
+        <span style="display:inline-block;margin-top:12px;font-size:14px;font-weight:700;color:#7c3aed;">Попробовать →</span>
+    </a>
+</div>
+@endif
 <!-- <section class="pg-examples">
     <div class="pg-examples-head">
         <h2>🎧 Послушай, какие песни получаются</h2>

@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Song;
 use App\Models\ChartEntry;
 use App\Models\FavoriteSong;
+use App\Models\Song;
 use App\Services\ChartService;
 use App\Services\SunoService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class DashboardController extends Controller
@@ -22,26 +22,26 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = $request->get('auth_user');
-        
+
         // Избранные треки
         $favoriteSongs = FavoriteSong::where('user_id', $user->user_id)
             ->with('song.user')
             ->orderBy('created_at', 'desc')
             ->take(10)
             ->get();
-        
+
         // Последние треки (если нет избранных)
         $recentSongs = Song::where('user_id', $user->user_id)
             ->notDeleted()
             ->orderBy('created_at', 'desc')
             ->take(12)
             ->get();
-        
+
         $stats = [
             'total_songs' => Song::where('user_id', $user->user_id)->notDeleted()->count(),
             'balance' => $user->balance,
         ];
-        
+
         return view('dashboard.index', compact('favoriteSongs', 'recentSongs', 'stats'));
     }
 
@@ -51,13 +51,13 @@ class DashboardController extends Controller
     public function showSong(Request $request, $id, ChartService $chartService, SunoService $sunoService)
     {
         $user = $request->get('auth_user');
-        
+
         $song = Song::where('id', $id)
             ->notDeleted()
             ->where('user_id', $user->user_id)
             ->firstOrFail();
 
-        if (!$song->file_path && $song->suno_task_id) {
+        if (! $song->file_path && $song->suno_task_id) {
             $song = $this->tryFetchAndDownloadSunoFiles($song, $sunoService);
         }
 
@@ -74,7 +74,7 @@ class DashboardController extends Controller
                 ->where('song_id', $song->id)
                 ->exists();
 
-            if (!$songInValentineChart) {
+            if (! $songInValentineChart) {
                 $userHasOtherSongInValentineChart = ChartEntry::where('chart_id', $valentineChart->id)
                     ->where('user_id', $user->user_id)
                     ->exists();
@@ -88,7 +88,7 @@ class DashboardController extends Controller
 
         // Проверяем, есть ли у пользователя другая песня в чарте
         $userHasOtherSongInChart = false;
-        if (!$songInChart) {
+        if (! $songInChart) {
             $userHasOtherSongInChart = ChartEntry::where('chart_id', $chart->id)
                 ->where('user_id', $user->user_id)
                 ->exists();
@@ -98,15 +98,15 @@ class DashboardController extends Controller
         $favoriteVariants = FavoriteSong::where('user_id', $user->user_id)
             ->where('song_id', $song->id)
             ->pluck('variant')
-            ->map(fn($v) => $song->id . '_' . $v)
+            ->map(fn ($v) => $song->id.'_'.$v)
             ->toArray();
 
         // Проверяем защищён ли трек от удаления
-        $isProtected = $songInChart || $songInValentineChart || !empty($favoriteVariants);
-        
+        $isProtected = $songInChart || $songInValentineChart || ! empty($favoriteVariants);
+
         return view('dashboard.song', compact(
-            'song', 
-            'songInChart', 
+            'song',
+            'songInChart',
             'userHasOtherSongInChart',
             'favoriteVariants',
             'valentineChart',
@@ -123,14 +123,14 @@ class DashboardController extends Controller
     {
         try {
             Log::info("Trying to fetch Suno files for song {$song->id}, task_id: {$song->suno_task_id}");
-            
+
             $result = $sunoService->checkStatus($song->suno_task_id);
 
-            if ($result['status'] === 'completed' && !empty($result['songs'])) {
+            if ($result['status'] === 'completed' && ! empty($result['songs'])) {
                 $sunoSongs = $result['songs'];
                 $updateData = [];
                 // Скачиваем первый вариант
-                if (!empty($sunoSongs[0]['audio_url'])) {
+                if (! empty($sunoSongs[0]['audio_url'])) {
 
                     $localUrl = $this->downloadSunoFile(
                         $sunoSongs[0]['audio_url'],
@@ -143,9 +143,9 @@ class DashboardController extends Controller
                         $updateData['audio_id_1'] = $sunoSongs[0]['id'] ?? null;
                     }
                 }
-                
+
                 // Скачиваем второй вариант
-                if (!empty($sunoSongs[1]['audio_url'])) {
+                if (! empty($sunoSongs[1]['audio_url'])) {
                     $localUrl = $this->downloadSunoFile(
                         $sunoSongs[1]['audio_url'],
                         $song->user_id,
@@ -157,8 +157,8 @@ class DashboardController extends Controller
                         $updateData['audio_id_2'] = $sunoSongs[1]['id'] ?? null;
                     }
                 }
-                
-                if (!empty($updateData)) {
+
+                if (! empty($updateData)) {
                     $song->update($updateData);
                     $song->refresh();
                     Log::info("Successfully downloaded Suno files for song {$song->id}", $updateData);
@@ -169,7 +169,7 @@ class DashboardController extends Controller
                 Log::warning("Unexpected Suno status for song {$song->id}", $result);
             }
         } catch (\Exception $e) {
-            Log::error("Failed to fetch Suno files for song {$song->id}: " . $e->getMessage());
+            Log::error("Failed to fetch Suno files for song {$song->id}: ".$e->getMessage());
         }
 
         return $song;
@@ -181,16 +181,16 @@ class DashboardController extends Controller
     protected function downloadSunoFile(string $url, int $userId, int $songId, string $prefix): ?string
     {
         $targetDir = public_path('music');
-        $baseUrl = config('app.url', 'https://narepite.site') . '/music';
-        
+        $baseUrl = config('app.url', 'https://narepite.site').'/music';
+
         // Создаём директорию если нет
-        if (!File::exists($targetDir)) {
+        if (! File::exists($targetDir)) {
             File::makeDirectory($targetDir, 0755, true);
         }
 
         try {
-            $filename = "{$prefix}_{$songId}_{$userId}_" . Str::random(8) . ".mp3";
-            $fullPath = $targetDir . '/' . $filename;
+            $filename = "{$prefix}_{$songId}_{$userId}_".Str::random(8).'.mp3';
+            $fullPath = $targetDir.'/'.$filename;
 
             Log::info("Downloading Suno file: {$url} -> {$fullPath}");
 
@@ -201,18 +201,20 @@ class DashboardController extends Controller
                 file_put_contents($fullPath, $response->body());
                 $localUrl = "{$baseUrl}/{$filename}";
                 Log::info("Downloaded successfully: {$localUrl}");
+
                 return $localUrl;
             }
 
             Log::warning("Download failed or file too small for URL: {$url}");
+
             return null;
 
         } catch (\Exception $e) {
-            Log::error("Download error: " . $e->getMessage());
+            Log::error('Download error: '.$e->getMessage());
+
             return null;
         }
     }
-
 
     /**
      * API: Список треков пользователя
@@ -220,7 +222,7 @@ class DashboardController extends Controller
     public function apiSongs(Request $request)
     {
         $user = $request->get('auth_user');
-        
+
         $songs = Song::where('user_id', $user->user_id)
             ->orderBy('created_at', 'desc')
             ->get()
@@ -232,16 +234,16 @@ class DashboardController extends Controller
                     'genre' => $song->genre,
                     'audio_url_1' => $song->file_path,
                     'audio_url_2' => $song->file_path_2,
+                    'lyrics' => $song->lyrics,
                     'created_at' => $song->created_at?->format('d.m.Y H:i'),
                 ];
             });
-        
+
         return response()->json([
             'songs' => $songs,
             'total' => $songs->count(),
         ]);
     }
-
 
     /**
      * Создать временную ссылку для скачивания (требует авторизации)
@@ -253,29 +255,28 @@ class DashboardController extends Controller
         // Ищем песню без привязки к пользователю сразу
         $song = Song::find($id);
 
-        if (!$song) {
+        if (! $song) {
             return response()->json(['error' => 'Песня не найдена'], 404);
         }
-
 
         // Разрешаем, если пользователь владелец ИЛИ песня есть в любом чарте
         $isOwner = $song->user_id === $user->user_id;
         $isInChart = \App\Models\ChartEntry::where('song_id', $song->id)->exists();
 
-        if (!$isOwner && !$isInChart) {
+        if (! $isOwner && ! $isInChart) {
             return response()->json(['error' => 'Нет прав на скачивание этого трека'], 403);
         }
 
         // Выбираем файл в зависимости от варианта
         $filePath = $variant == 2 ? $song->file_path_2 : $song->file_path;
 
-        if (!$filePath) {
+        if (! $filePath) {
             return response()->json(['error' => 'Файл не найден'], 404);
         }
 
         // Генерируем уникальный токен
         $token = Str::random(32);
-        
+
         // Сохраняем в кэш на 5 минут
         Cache::put("download_token:{$token}", [
             'song_id' => $song->id,
@@ -300,7 +301,7 @@ class DashboardController extends Controller
         // Получаем данные из кэша
         $data = Cache::get("download_token:{$token}");
 
-        if (!$data) {
+        if (! $data) {
             abort(404, 'Ссылка истекла или недействительна');
         }
 
@@ -310,13 +311,13 @@ class DashboardController extends Controller
 
         // Формируем имя файла
         $variantSuffix = $variant == 2 ? '_v2' : '';
-        $downloadName = Str::slug($title, '_') . $variantSuffix . '.mp3';
+        $downloadName = Str::slug($title, '_').$variantSuffix.'.mp3';
 
         // Если это URL
         if (str_starts_with($filePath, 'http')) {
             $content = @file_get_contents($filePath);
-            
-            if (!$content) {
+
+            if (! $content) {
                 abort(404, 'Не удалось скачать файл');
             }
 
@@ -325,7 +326,7 @@ class DashboardController extends Controller
 
             return response($content, 200, [
                 'Content-Type' => 'audio/mpeg',
-                'Content-Disposition' => 'attachment; filename="' . $downloadName . '"',
+                'Content-Disposition' => 'attachment; filename="'.$downloadName.'"',
                 'Content-Length' => strlen($content),
             ]);
         }
@@ -333,7 +334,7 @@ class DashboardController extends Controller
         // Локальный файл
         $fullPath = $this->resolveFilePath($filePath);
 
-        if (!$fullPath || !file_exists($fullPath)) {
+        if (! $fullPath || ! file_exists($fullPath)) {
             abort(404, 'Файл не найден');
         }
 
@@ -351,9 +352,9 @@ class DashboardController extends Controller
     private function resolveFilePath(string $filePath): ?string
     {
         $paths = [
-            storage_path('app/public/' . str_replace('/storage/', '', $filePath)),
+            storage_path('app/public/'.str_replace('/storage/', '', $filePath)),
             public_path(ltrim($filePath, '/')),
-            public_path('music/' . basename($filePath)),
+            public_path('music/'.basename($filePath)),
         ];
 
         foreach ($paths as $path) {
@@ -376,7 +377,7 @@ class DashboardController extends Controller
             ->where('user_id', $user->user_id)
             ->first();
 
-        if (!$song) {
+        if (! $song) {
             return response()->json(['error' => 'Песня не найдена'], 404);
         }
 
@@ -391,7 +392,7 @@ class DashboardController extends Controller
         foreach ($filesToDelete as $fileUrl) {
             // Если файл локальный (в /music/)
             $filename = basename(parse_url($fileUrl, PHP_URL_PATH));
-            $localPath = public_path('music/' . $filename);
+            $localPath = public_path('music/'.$filename);
             if (file_exists($localPath)) {
                 @unlink($localPath);
             }
@@ -424,7 +425,7 @@ class DashboardController extends Controller
             ->where('user_id', $user->user_id)
             ->first();
 
-        if (!$song) {
+        if (! $song) {
             return response()->json(['error' => 'Песня не найдена'], 404);
         }
 
@@ -435,6 +436,4 @@ class DashboardController extends Controller
             'title' => $song->title,
         ]);
     }
-
-
 }

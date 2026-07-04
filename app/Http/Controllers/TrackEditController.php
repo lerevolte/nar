@@ -209,20 +209,34 @@ class TrackEditController extends Controller
             return $err;
         }
 
+        // Текст кавера обязателен для Suno (custom mode + вокал):
+        // если не задан, а источник — свой трек, берём текст оригинала
+        $prompt = $request->input('prompt') ?: $parentSong?->lyrics;
+        $instrumental = $request->boolean('instrumental');
+
+        if (! $instrumental && ! $prompt) {
+            return response()->json(['error' => 'Укажите текст кавера или включите режим «без вокала»'], 422);
+        }
+
+        // Русские теги секций ([Куплет] и т.п.) -> английские, как при генерации
+        $sunoPrompt = $prompt
+            ? \App\Services\LyricsGeneratorService::prepareLyricsForSuno($prompt, $request->input('vocal_gender'))
+            : null;
+
         $result = $this->suno->uploadCover([
             'upload_url' => $sourceUrl,
             'custom_mode' => true,
-            'instrumental' => $request->boolean('instrumental'),
+            'instrumental' => $instrumental,
             'title' => $request->input('title'),
             'style' => $request->input('style'),
-            'prompt' => $request->input('prompt'),
+            'prompt' => $sunoPrompt,
             'vocal_gender' => $request->input('vocal_gender'),
         ]);
 
         return $this->launch($user, $result, 'upload_cover', [
             'title' => $request->input('title') ?: ($parentSong ? $parentSong->title.' (кавер)' : 'Кавер'),
             'genre' => $request->input('style'),
-            'lyrics' => $request->input('prompt') ?: $parentSong?->lyrics,
+            'lyrics' => $prompt,
             'parent_song_id' => $parentSong?->id,
         ]);
     }

@@ -415,7 +415,7 @@
 {{-- Track operations (extend / replace section / mashup) --}}
 @if($song->file_path && $song->suno_task_id && $song->user_id === $authUser->user_id && $trackOpsAllowed)
 <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-top:16px;">
-    <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">🎛 Изменить трек</h3>
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">Изменить трек</h3>
     <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Понравилась песня? Сделайте её длиннее, перепойте в другом стиле или получите минусовку</p>
     <div class="track-ops-grid">
         <button class="chart-add-btn" onclick="openExtendModal()">➕ Продлить трек</button>

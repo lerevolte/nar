@@ -207,7 +207,6 @@
 <div class="generate-container">
     @if($trackOpsAllowed)
     <a href="{{ route('studio') }}" style="display:flex;align-items:center;gap:12px;background:var(--bg-card);border:1.5px solid var(--border-accent);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:16px;text-decoration:none;color:var(--text-primary);box-shadow:var(--shadow-xs);">
-        <span style="font-size:28px;">🎚</span>
         <span style="flex:1;">
             <span style="display:block;font-size:14px;font-weight:700;">Студия: обработать готовое аудио</span>
             <span style="display:block;font-size:12px;color:var(--text-secondary);margin-top:2px;">Кавер, продление, минусовка, вокал, мэшап — из своего файла или трека</span>

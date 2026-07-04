@@ -1247,11 +1247,46 @@ class SunoService
     }
 
     /**
+     * Нормализация пользовательского стиля для операций над треками:
+     * убираем эмодзи, маппим русские жанры и подменяем имена артистов
+     * на описание стиля (словарь + AI-фоллбэк) — как в generateMusic().
+     */
+    private function normalizeUserStyle(?string $style): ?string
+    {
+        if ($style === null || trim($style) === '') {
+            return $style;
+        }
+
+        foreach (['🎶', '🎤', '🕺', '🎸', '🎻', '🎹', '⚡', '🌿', '🎵', '✨'] as $emoji) {
+            $style = str_replace($emoji, '', $style);
+        }
+        $style = trim($style);
+
+        $style = $this->genreMap[$style] ?? $style;
+
+        $original = $style;
+        $style = $this->replaceArtistsInStyle($style);
+
+        if ($style === $original && $this->mightContainArtist($original)) {
+            Log::info("TrackOp: potential artist detected, asking AI: '{$original}'");
+            $style = $this->replaceArtistWithAI($original);
+        }
+
+        if ($original !== $style) {
+            Log::info("TrackOp artist replacement: '{$original}' -> '{$style}'");
+        }
+
+        return $style;
+    }
+
+    /**
      * Продление существующего трека (Extend Music).
      * Нужен audio_id исходного клипа; api_source должен совпадать с источником.
      */
     public function extendMusic(array $params): array
     {
+        $params['style'] = $this->normalizeUserStyle($params['style'] ?? null);
+
         $custom = isset($params['continue_at'])
             || ! empty($params['prompt'])
             || ! empty($params['style'])
@@ -1289,6 +1324,8 @@ class SunoService
      */
     public function uploadCover(array $params): array
     {
+        $params['style'] = $this->normalizeUserStyle($params['style'] ?? null);
+
         $custom = $params['custom_mode'] ?? true;
         $instrumental = (bool) ($params['instrumental'] ?? false);
 
@@ -1320,6 +1357,8 @@ class SunoService
      */
     public function uploadExtend(array $params): array
     {
+        $params['style'] = $this->normalizeUserStyle($params['style'] ?? null);
+
         $custom = isset($params['continue_at'])
             || ! empty($params['style'])
             || ! empty($params['title']);
@@ -1363,6 +1402,8 @@ class SunoService
      */
     public function addInstrumental(array $params): array
     {
+        $params['tags'] = $this->normalizeUserStyle($params['tags'] ?? null);
+
         $payload = [
             'uploadUrl' => $params['upload_url'],
             'title' => mb_substr($params['title'] ?? '', 0, 100),
@@ -1383,6 +1424,8 @@ class SunoService
      */
     public function addVocals(array $params): array
     {
+        $params['style'] = $this->normalizeUserStyle($params['style'] ?? null);
+
         $payload = [
             'uploadUrl' => $params['upload_url'],
             'prompt' => mb_substr($params['prompt'] ?? '', 0, 5000),
@@ -1404,6 +1447,8 @@ class SunoService
      */
     public function mashup(array $params): array
     {
+        $params['style'] = $this->normalizeUserStyle($params['style'] ?? null);
+
         $custom = (bool) ($params['custom_mode'] ?? false);
         $instrumental = (bool) ($params['instrumental'] ?? false);
 
@@ -1436,6 +1481,8 @@ class SunoService
      */
     public function replaceSection(array $params): array
     {
+        $params['tags'] = $this->normalizeUserStyle($params['tags'] ?? null);
+
         $payload = [
             'taskId' => $params['task_id'],
             'audioId' => $params['audio_id'],

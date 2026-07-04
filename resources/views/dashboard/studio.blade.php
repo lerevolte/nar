@@ -42,6 +42,21 @@
     .variant-row { display:flex; gap:8px; margin-top:10px; }
     .variant-pick { flex:1; padding:9px; border:1.5px solid var(--border); border-radius:var(--radius-md); background:var(--bg-card); font-size:13px; font-weight:600; cursor:pointer; text-align:center; }
     .variant-pick.active { border-color:var(--accent); background:var(--accent); color:white; }
+    /* Searchable combobox */
+    .combo { position:relative; }
+    .combo-list { position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--bg-card); border:1.5px solid var(--border); border-radius:var(--radius-md); max-height:260px; overflow-y:auto; z-index:60; display:none; box-shadow:var(--shadow-md); }
+    .combo-list.open { display:block; }
+    .combo-item { padding:11px 14px; font-size:14px; cursor:pointer; border-bottom:1px solid var(--border); }
+    .combo-item:last-child { border-bottom:none; }
+    .combo-item:hover { background:var(--accent-soft); }
+    .combo-item .combo-date { font-size:12px; color:var(--text-tertiary); margin-top:2px; }
+    .combo-empty { padding:12px 14px; font-size:13px; color:var(--text-tertiary); }
+    /* Translate row */
+    .translate-row { display:flex; gap:8px; margin-top:8px; }
+    .translate-row select { flex:1; }
+    .translate-btn { padding:10px 16px; border:1.5px solid var(--border); border-radius:var(--radius-md); background:var(--bg-card); font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; }
+    .translate-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .translate-btn:disabled { opacity:0.6; cursor:wait; }
 </style>
 @endpush
 
@@ -55,15 +70,15 @@
         <p class="studio-hint" style="margin-bottom:0;">Эта функция пока в тестировании.</p>
     </div>
 @else
-<h2 style="font-size:20px;font-weight:700;margin-bottom:6px;">🎚 Студия</h2>
+<h2 style="font-size:20px;font-weight:700;margin-bottom:6px;">Студия</h2>
 <p class="studio-hint">Кавер, продление, минусовка, новый вокал или мэшап — из вашего файла или из уже созданного трека. Любая операция спишет 1 песню с баланса.</p>
 
 {{-- Step 1: source --}}
 <div class="studio-card">
     <h3>1. Выберите источник</h3>
     <div class="source-tabs">
-        <button class="source-tab active" data-src="file" onclick="selectSource('file')">📁 Загрузить файл</button>
-        <button class="source-tab" data-src="track" onclick="selectSource('track')">🎵 Из моих треков</button>
+        <button class="source-tab active" data-src="file" onclick="selectSource('file')">Загрузить файл</button>
+        <button class="source-tab" data-src="track" onclick="selectSource('track')">Из моих треков</button>
     </div>
 
     <div class="source-pane active" id="pane-file">
@@ -78,8 +93,11 @@
 
     <div class="source-pane" id="pane-track">
         <div class="studio-field">
-            <label>Трек:</label>
-            <select id="trackSelect" class="studio-select" onchange="onTrackPicked()"><option value="">Загрузка...</option></select>
+            <label>Трек (поиск по названию):</label>
+            <div class="combo">
+                <input type="text" class="studio-input" id="trackSearch" placeholder="Начните вводить название..." autocomplete="off">
+                <div class="combo-list" id="trackList"></div>
+            </div>
         </div>
         <div class="variant-row" id="variantRow" style="display:none;">
             <button class="variant-pick active" data-v="1" onclick="pickVariant(1)">Вариант 1</button>
@@ -92,19 +110,33 @@
 <div class="studio-card" id="opsCard" style="display:none;">
     <h3>2. Выберите операцию</h3>
     <div class="op-tabs">
-        <button class="op-tab active" data-op="upload_cover" onclick="selectOp('upload_cover')">🎤 Кавер</button>
-        <button class="op-tab" data-op="upload_extend" onclick="selectOp('upload_extend')">➕ Продлить</button>
-        <button class="op-tab" data-op="add_instrumental" onclick="selectOp('add_instrumental')">🎹 Сделать минус</button>
-        <button class="op-tab" data-op="add_vocals" onclick="selectOp('add_vocals')">🎶 Добавить вокал</button>
-        <button class="op-tab" data-op="mashup" onclick="selectOp('mashup')">🔀 Мэшап</button>
+        <button class="op-tab active" data-op="upload_cover" onclick="selectOp('upload_cover')">Кавер</button>
+        <button class="op-tab" data-op="upload_extend" onclick="selectOp('upload_extend')">Продлить</button>
+        <button class="op-tab" data-op="add_instrumental" onclick="selectOp('add_instrumental')">Сделать минус</button>
+        <button class="op-tab" data-op="add_vocals" onclick="selectOp('add_vocals')">Добавить вокал</button>
+        <button class="op-tab" data-op="mashup" onclick="selectOp('mashup')">Мэшап</button>
     </div>
 
     {{-- Cover --}}
     <div class="op-form active" id="form-upload_cover">
-        <p class="studio-hint">Перепоём выбранное аудио в новом стиле — новая аранжировка, тот же характер.</p>
+        <p class="studio-hint">Перепоём выбранное аудио в новом стиле — новая аранжировка и вокал, тот же текст. Можно указать стиль артиста (например, «в стиле Eminem») — мы преобразуем его в музыкальное описание. Хотите кавер на другом языке — переведите текст кнопкой ниже.</p>
         <div class="studio-field"><label>Название</label><input type="text" class="studio-input" id="cover-title" maxlength="100" placeholder="Название трека"></div>
-        <div class="studio-field"><label>Новый стиль</label><input type="text" class="studio-input" id="cover-style" maxlength="200" placeholder="например, рок-баллада, акустика, EDM"></div>
-        <div class="studio-field"><label>Текст / описание (необязательно)</label><textarea class="studio-textarea" id="cover-prompt" maxlength="5000"></textarea></div>
+        <div class="studio-field"><label>Новый стиль</label><input type="text" class="studio-input" id="cover-style" maxlength="200" placeholder="например, рок-баллада, акустика, в стиле Eminem"></div>
+        <div class="studio-field">
+            <label>Текст кавера (что будет спето)</label>
+            <textarea class="studio-textarea" id="cover-prompt" maxlength="5000" placeholder="При выборе своего трека текст подставится автоматически" style="min-height:120px;"></textarea>
+            <div class="translate-row">
+                <select class="studio-select" id="cover-lang">
+                    <option value="en">Перевести на английский</option>
+                    <option value="ru">Перевести на русский</option>
+                    <option value="de">Перевести на немецкий</option>
+                    <option value="es">Перевести на испанский</option>
+                    <option value="fr">Перевести на французский</option>
+                    <option value="it">Перевести на итальянский</option>
+                </select>
+                <button class="translate-btn" id="cover-translate-btn" onclick="translateCoverLyrics()">Перевести</button>
+            </div>
+        </div>
         <label class="checkbox-row"><input type="checkbox" id="cover-instr"> Без вокала (инструментал)</label>
         <button class="studio-submit" onclick="submitOp('upload_cover')">Создать кавер · 1 песня</button>
     </div>
@@ -143,8 +175,11 @@
     <div class="op-form" id="form-mashup">
         <p class="studio-hint">Смешаем два трека в один. Первый — выбранный источник, второй выберите ниже.</p>
         <div class="studio-field">
-            <label>Второй трек:</label>
-            <select id="mashup-second" class="studio-select"><option value="">Загрузка...</option></select>
+            <label>Второй трек (поиск по названию):</label>
+            <div class="combo">
+                <input type="text" class="studio-input" id="mashupSearch" placeholder="Начните вводить название..." autocomplete="off">
+                <div class="combo-list" id="mashupList"></div>
+            </div>
         </div>
         <div class="studio-field"><label>Название (необязательно)</label><input type="text" class="studio-input" id="mashup-title" maxlength="100"></div>
         <div class="studio-field"><label>Стиль (необязательно)</label><input type="text" class="studio-input" id="mashup-style" maxlength="200" placeholder="например, lo-fi, dance"></div>
@@ -163,6 +198,7 @@
     let myTracks = [];
     let pickedSongId = null;
     let pickedVariant = 1;
+    let mashupSecondId = null;
     let currentOp = 'upload_cover';
 
     const dropZone = document.getElementById('dropZone');
@@ -204,16 +240,7 @@
         }
     }
 
-    // ===== SOURCE =====
-    function selectSource(mode) {
-        sourceMode = mode;
-        document.querySelectorAll('.source-tab').forEach(t => t.classList.toggle('active', t.dataset.src === mode));
-        document.getElementById('pane-file').classList.toggle('active', mode === 'file');
-        document.getElementById('pane-track').classList.toggle('active', mode === 'track');
-        if (mode === 'track' && !myTracks.length) loadTracks();
-        refreshOpsVisibility();
-    }
-
+    // ===== TRACKS =====
     let tracksPromise = null;
     function loadTracks() {
         if (!tracksPromise) tracksPromise = (async () => {
@@ -221,36 +248,90 @@
                 const r = await fetch('/api/songs', { headers:{'X-CSRF-TOKEN': CSRF}, credentials:'same-origin' });
                 const d = await r.json();
                 myTracks = (d.songs || []).filter(s => s.audio_url_1);
-                fillTrackSelect(document.getElementById('trackSelect'), '— выберите трек —');
-                fillMashupSecond();
-            } catch(e) {
-                document.getElementById('trackSelect').innerHTML = '<option value="">Ошибка загрузки</option>';
-            }
+            } catch(e) { myTracks = []; }
         })();
         return tracksPromise;
     }
 
-    function esc(s) { return (s || 'Без названия').replace(/</g, '&lt;'); }
+    function esc(s) { return (s || 'Без названия').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
 
-    function fillTrackSelect(sel, placeholder) {
-        sel.innerHTML = '<option value="">' + placeholder + '</option>' +
-            myTracks.map(s => `<option value="${s.id}">${esc(s.title)} · ${s.created_at || ''}</option>`).join('');
+    // ===== SEARCHABLE COMBOBOX =====
+    // makeCombo: input с выпадающим списком треков и поиском по названию
+    function makeCombo(inputId, listId, getItems, onPick) {
+        const input = document.getElementById(inputId);
+        const list = document.getElementById(listId);
+
+        function render(query) {
+            const q = (query || '').toLowerCase().trim();
+            const items = getItems().filter(s => !q || (s.title || 'без названия').toLowerCase().includes(q));
+            if (!items.length) {
+                list.innerHTML = '<div class="combo-empty">Ничего не найдено</div>';
+            } else {
+                list.innerHTML = items.slice(0, 50).map(s =>
+                    `<div class="combo-item" data-id="${s.id}"><div>${esc(s.title)}</div><div class="combo-date">${s.created_at || ''}</div></div>`
+                ).join('');
+                list.querySelectorAll('.combo-item').forEach(el => {
+                    el.addEventListener('mousedown', e => {  // mousedown — раньше blur
+                        e.preventDefault();
+                        const id = parseInt(el.dataset.id);
+                        const item = getItems().find(s => s.id === id);
+                        input.value = item ? (item.title || 'Без названия') : '';
+                        list.classList.remove('open');
+                        onPick(item || null);
+                    });
+                });
+            }
+            list.classList.add('open');
+        }
+
+        input.addEventListener('focus', async () => { await loadTracks(); render(input.value); });
+        input.addEventListener('input', async () => { await loadTracks(); onPick(null); render(input.value); });
+        input.addEventListener('blur', () => setTimeout(() => list.classList.remove('open'), 150));
+        return { render, input };
     }
 
-    function onTrackPicked() {
-        pickedSongId = parseInt(document.getElementById('trackSelect').value) || null;
+    const trackCombo = makeCombo('trackSearch', 'trackList',
+        () => myTracks,
+        (item) => { pickedSongId = item ? item.id : null; onTrackPicked(item); });
+
+    const mashupCombo = makeCombo('mashupSearch', 'mashupList',
+        () => myTracks.filter(s => !(sourceMode === 'track' && s.id === pickedSongId)),
+        (item) => { mashupSecondId = item ? item.id : null; });
+
+    // ===== SOURCE =====
+    function selectSource(mode) {
+        sourceMode = mode;
+        document.querySelectorAll('.source-tab').forEach(t => t.classList.toggle('active', t.dataset.src === mode));
+        document.getElementById('pane-file').classList.toggle('active', mode === 'file');
+        document.getElementById('pane-track').classList.toggle('active', mode === 'track');
+        if (mode === 'track') loadTracks();
+        refreshOpsVisibility();
+    }
+
+    function onTrackPicked(item) {
         pickedVariant = 1;
-        const t = myTracks.find(s => s.id === pickedSongId);
         const row = document.getElementById('variantRow');
-        if (t) {
+        if (item) {
             row.style.display = '';
-            document.getElementById('variantBtn2').style.display = t.audio_url_2 ? '' : 'none';
+            document.getElementById('variantBtn2').style.display = item.audio_url_2 ? '' : 'none';
             document.querySelectorAll('.variant-pick').forEach(b => b.classList.toggle('active', b.dataset.v === '1'));
+            prefillCoverLyrics(item);
         } else {
             row.style.display = 'none';
         }
         refreshOpsVisibility();
     }
+
+    // Автоподстановка текста трека в поле текста кавера
+    // (перезаписываем, только если поле пустое или заполнено нами же)
+    function prefillCoverLyrics(item) {
+        const ta = document.getElementById('cover-prompt');
+        if (item && item.lyrics && (!ta.value.trim() || ta.dataset.autofilled === '1')) {
+            ta.value = item.lyrics;
+            ta.dataset.autofilled = '1';
+        }
+    }
+    document.getElementById('cover-prompt').addEventListener('input', function() { this.dataset.autofilled = '0'; });
 
     function pickVariant(v) {
         pickedVariant = v;
@@ -263,9 +344,27 @@
 
     function refreshOpsVisibility() {
         document.getElementById('opsCard').style.display = sourceReady() ? '' : 'none';
-        // «Использовать стем» — только для источника-трека
         document.getElementById('vocStemRow').style.display = (sourceMode === 'track' && pickedSongId) ? '' : 'none';
-        if (currentOp === 'mashup') fillMashupSecond();
+    }
+
+    // ===== TRANSLATE (как на /create) =====
+    async function translateCoverLyrics() {
+        const ta = document.getElementById('cover-prompt');
+        const text = ta.value.trim();
+        if (!text) { alert('Нет текста для перевода'); return; }
+        const btn = document.getElementById('cover-translate-btn');
+        const orig = btn.textContent; btn.disabled = true; btn.textContent = '⏳...';
+        try {
+            const r = await fetch('/api/generate/translate', {
+                method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN': CSRF},
+                credentials:'same-origin',
+                body: JSON.stringify({ lyrics: text, target_language: document.getElementById('cover-lang').value })
+            });
+            const d = await r.json();
+            if (r.ok && d.success) { ta.value = d.lyrics; ta.dataset.autofilled = '0'; }
+            else alert('❌ ' + (d.error || 'Ошибка перевода'));
+        } catch(e) { alert('Ошибка: ' + e.message); }
+        finally { btn.disabled = false; btn.textContent = orig; }
     }
 
     // ===== OPS =====
@@ -273,25 +372,12 @@
         currentOp = op;
         document.querySelectorAll('.op-tab').forEach(t => t.classList.toggle('active', t.dataset.op === op));
         document.querySelectorAll('.op-form').forEach(f => f.classList.toggle('active', f.id === 'form-' + op));
-        if (op === 'mashup') {
-            if (!myTracks.length) loadTracks(); else fillMashupSecond();
-        }
-    }
-
-    function fillMashupSecond() {
-        const sel = document.getElementById('mashup-second');
-        if (!sel) return;
-        // второй источник — любой трек, кроме выбранного первым
-        const options = myTracks.filter(s => !(sourceMode === 'track' && s.id === pickedSongId));
-        sel.innerHTML = '<option value="">— выберите второй трек —</option>' +
-            options.map(s => `<option value="${s.id}">${esc(s.title)} · ${s.created_at || ''}</option>`).join('');
-        if (!myTracks.length) loadTracks();
+        if (op === 'mashup') loadTracks();
     }
 
     function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
 
     function sourceBody() {
-        // общий источник для не-мэшап операций
         if (sourceMode === 'file') return { upload_url: uploadedUrl };
         return { song_id: pickedSongId, variant: pickedVariant };
     }
@@ -301,11 +387,10 @@
         let url, body;
 
         if (op === 'mashup') {
-            const second = parseInt(document.getElementById('mashup-second').value) || null;
-            if (!second) { alert('Выберите второй трек'); return; }
+            if (!mashupSecondId) { alert('Выберите второй трек'); return; }
             body = { song_ids: [], upload_urls: [] };
             if (sourceMode === 'file') body.upload_urls.push(uploadedUrl); else body.song_ids.push(pickedSongId);
-            body.song_ids.push(second);
+            body.song_ids.push(mashupSecondId);
             if (val('mashup-title')) body.title = val('mashup-title');
             if (val('mashup-style')) body.style = val('mashup-style');
             url = '/api/track-ops/mashup';
@@ -316,6 +401,7 @@
                 body.title = val('cover-title'); body.style = val('cover-style');
                 body.prompt = val('cover-prompt'); body.instrumental = document.getElementById('cover-instr').checked;
                 if (!body.style) { alert('Укажите новый стиль'); return; }
+                if (!body.instrumental && !body.prompt && sourceMode === 'file') { alert('Укажите текст кавера или включите режим «без вокала»'); return; }
             } else if (op === 'upload_extend') {
                 url = '/api/track-ops/upload-extend';
                 body.title = val('ext-title'); body.style = val('ext-style'); body.prompt = val('ext-prompt');
@@ -353,9 +439,12 @@
         if (song) {
             selectSource('track');
             loadTracks().then(() => {
-                const sel = document.getElementById('trackSelect');
-                sel.value = String(song);
-                onTrackPicked();
+                const item = myTracks.find(s => s.id === song);
+                if (item) {
+                    pickedSongId = item.id;
+                    trackCombo.input.value = item.title || 'Без названия';
+                    onTrackPicked(item);
+                }
             });
         }
         if (op && document.querySelector(`.op-tab[data-op="${op}"]`)) selectOp(op);

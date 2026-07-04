@@ -59,6 +59,14 @@ return [
         'api_url' => env('KIE_API_URL', 'https://api.kie.ai/api/v1'),
     ],
 
+    // Хранилище пользовательских медиа (музыка, обложки, загрузки).
+    // driver=local — пишем в public_path как раньше; driver=s3 — в бакет S3.
+    'media' => [
+        'driver' => env('MEDIA_DISK', 'local'),
+        // Базовый URL при driver=local (отдаётся Apache из public/).
+        'local_url' => env('MEDIA_LOCAL_URL', 'https://narepite.site'),
+    ],
+
     // Операции над треками (extend / cover / add-instrumental и т.д.)
     'track_ops' => [
         // На старте функции включены только для этих user_id (обкатка на админе).

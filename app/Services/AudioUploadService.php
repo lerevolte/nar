@@ -10,13 +10,15 @@ use Illuminate\Support\Str;
  * Приём пользовательских аудиофайлов для операций над треками
  * (upload-cover / upload-extend / add-instrumental / add-vocals / mashup).
  *
- * Файл сохраняется в public/uploads/tracks и отдаётся по публичному URL,
- * чтобы Suno API мог его скачать по uploadUrl.
+ * Файл сохраняется через MediaStorageService (локально или в S3) и отдаётся
+ * по публичному URL, чтобы Suno API мог его скачать по uploadUrl.
  */
 class AudioUploadService
 {
     /** Разрешённые расширения. */
     public const ALLOWED_EXT = ['mp3', 'wav', 'm4a', 'mp4', 'ogg', 'webm', 'flac'];
+
+    public function __construct(private MediaStorageService $media) {}
 
     /**
      * Сохраняет загруженный файл и возвращает публичный URL.
@@ -46,15 +48,9 @@ class AudioUploadService
             throw new \RuntimeException("Аудио слишком длинное. Максимум {$maxMin} мин.");
         }
 
-        $dir = public_path('uploads/tracks');
-        if (! is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
-
         $name = $userId.'-'.time().'-'.Str::random(8).'.'.$ext;
-        $file->move($dir, $name);
 
-        return 'https://narepite.site/uploads/tracks/'.$name;
+        return $this->media->putUploadedFile($file, "uploads/tracks/{$name}");
     }
 
     /**

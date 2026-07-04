@@ -119,7 +119,7 @@
 
     {{-- Cover --}}
     <div class="op-form active" id="form-upload_cover">
-        <p class="studio-hint">Перепоём выбранное аудио в новом стиле — новая аранжировка и вокал, тот же текст. Можно указать стиль артиста (например, «в стиле Eminem») — мы преобразуем его в музыкальное описание. Хотите кавер на другом языке — переведите текст кнопкой ниже.</p>
+        <p class="studio-hint">Перепоём выбранное аудио в новом стиле — новая аранжировка и вокал, тот же текст. Можно указать стиль артиста (например, «в стиле Eminem») — мы преобразуем его в музыкальное описание. Хотите кавер на другом языке — переведите текст кнопкой ниже.<br><br>Известные песни (из официальных каталогов) нельзя обработать напрямую — для них предложим ремейк: распознаем текст и создадим новую версию в вашем стиле.</p>
         <div class="studio-field"><label>Название</label><input type="text" class="studio-input" id="cover-title" maxlength="100" placeholder="Название трека"></div>
         <div class="studio-field"><label>Новый стиль</label><input type="text" class="studio-input" id="cover-style" maxlength="200" placeholder="например, рок-баллада, акустика, в стиле Eminem"></div>
         <div class="studio-field">
@@ -449,6 +449,39 @@
             const r = await fetch(url, {
                 method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN': CSRF},
                 credentials:'same-origin', body: JSON.stringify(body)
+            });
+            const d = await r.json();
+            if (r.ok && d.success) { window.location.href = '/songs/' + d.song_id; return; }
+
+            // Известная песня из каталога — Suno не принимает аудио,
+            // предлагаем ремейк: новая генерация по тексту в новом стиле
+            if (d.catalog_match && op === 'upload_cover') {
+                const lyricsText = val('cover-prompt');
+                if (!lyricsText) {
+                    alert(d.error + '\n\nСначала получите текст: нажмите «Распознать текст из файла» или вставьте его вручную — и повторите.');
+                } else if (confirm(d.error + '\n\nСделать ремейк сейчас? Создадим новую песню с этим текстом в стиле «' + (val('cover-style') || 'как в оригинале') + '». Оригинальное аудио не используется. Спишется 1 песня.')) {
+                    btn.textContent = '⏳ Создаю ремейк...';
+                    await remakeFromText(btn, orig);
+                    return;
+                }
+                btn.disabled = false; btn.textContent = orig; return;
+            }
+
+            alert('❌ ' + (d.error || 'Ошибка')); btn.disabled = false; btn.textContent = orig;
+        } catch(e) { alert('Ошибка: ' + e.message); btn.disabled = false; btn.textContent = orig; }
+    }
+
+    // Ремейк по тексту — обычная генерация (без исходного аудио)
+    async function remakeFromText(btn, orig) {
+        try {
+            const r = await fetch('/api/generate/music', {
+                method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN': CSRF},
+                credentials:'same-origin',
+                body: JSON.stringify({
+                    title: val('cover-title') || null,
+                    lyrics: val('cover-prompt'),
+                    genre: val('cover-style') || 'Поп'
+                })
             });
             const d = await r.json();
             if (r.ok && d.success) { window.location.href = '/songs/' + d.song_id; }

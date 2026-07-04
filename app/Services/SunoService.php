@@ -1197,6 +1197,17 @@ class SunoService
 
                 $errorMsg = $data['msg'] ?? ("HTTP {$status}: ".mb_substr($response->body(), 0, 120));
 
+                // 413 / catalog match — Suno не принимает известные записи
+                // из каталога (защита авторских прав)
+                $code = $data['code'] ?? $status;
+                if ($code == 413 || str_contains(strtolower($errorMsg), 'matches an existing recording')) {
+                    return [
+                        'success' => false,
+                        'catalog_match' => true,
+                        'error' => 'Эта запись совпадает с известной песней из каталога — Suno не обрабатывает такие файлы (защита авторских прав). Но можно сделать ремейк: возьмём текст песни и создадим новую версию в вашем стиле.',
+                    ];
+                }
+
                 return ['success' => false, 'error' => $this->cleanErrorMessage($errorMsg)];
             } catch (\Illuminate\Http\Client\ConnectionException $e) {
                 $lastError = 'Ошибка подключения: '.$e->getMessage();

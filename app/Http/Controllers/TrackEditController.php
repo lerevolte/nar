@@ -542,7 +542,8 @@ class TrackEditController extends Controller
             return response()->json([
                 'error' => $result['error'] ?? 'Не удалось запустить операцию',
                 'retry_possible' => $result['retry_possible'] ?? false,
-            ], 500);
+                'catalog_match' => $result['catalog_match'] ?? false,
+            ], $result['catalog_match'] ?? false ? 422 : 500);
         }
 
         if ($billable && in_array($operation, self::BILLABLE_OPS, true)) {

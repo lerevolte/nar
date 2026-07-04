@@ -33,6 +33,15 @@
     .studio-submit:hover { background:var(--accent-hover); }
     .studio-submit:disabled { background:var(--text-tertiary); cursor:not-allowed; }
     .upload-status { font-size:13px; margin-top:10px; }
+    /* Source toggle */
+    .source-tabs { display:flex; gap:8px; margin-bottom:16px; }
+    .source-tab { flex:1; padding:11px; border:1.5px solid var(--border); border-radius:var(--radius-md); background:var(--bg-card); font-size:14px; font-weight:600; cursor:pointer; text-align:center; transition:all var(--duration) var(--ease); }
+    .source-tab.active { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
+    .source-pane { display:none; }
+    .source-pane.active { display:block; }
+    .variant-row { display:flex; gap:8px; margin-top:10px; }
+    .variant-pick { flex:1; padding:9px; border:1.5px solid var(--border); border-radius:var(--radius-md); background:var(--bg-card); font-size:13px; font-weight:600; cursor:pointer; text-align:center; }
+    .variant-pick.active { border-color:var(--accent); background:var(--accent); color:white; }
 </style>
 @endpush
 
@@ -46,19 +55,37 @@
         <p class="studio-hint" style="margin-bottom:0;">Эта функция пока в тестировании.</p>
     </div>
 @else
-<h2 style="font-size:20px;font-weight:700;margin-bottom:6px;">🎚 Обработать своё аудио</h2>
-<p class="studio-hint">Загрузите аудиофайл и сделайте из него кавер, продление, минусовку или добавьте вокал. Любая операция спишет 1 песню с баланса.</p>
+<h2 style="font-size:20px;font-weight:700;margin-bottom:6px;">🎚 Студия</h2>
+<p class="studio-hint">Кавер, продление, минусовка, новый вокал или мэшап — из вашего файла или из уже созданного трека. Любая операция спишет 1 песню с баланса.</p>
 
-{{-- Step 1: upload --}}
+{{-- Step 1: source --}}
 <div class="studio-card">
-    <h3>1. Загрузите файл</h3>
-    <p class="studio-hint">MP3, WAV, M4A, OGG, FLAC. До {{ $maxMb }} МБ и {{ $maxMin }} мин.</p>
-    <div class="upload-drop" id="dropZone">
-        <div class="big">⬆️</div>
-        <div id="dropText">Нажмите или перетащите файл сюда</div>
+    <h3>1. Выберите источник</h3>
+    <div class="source-tabs">
+        <button class="source-tab active" data-src="file" onclick="selectSource('file')">📁 Загрузить файл</button>
+        <button class="source-tab" data-src="track" onclick="selectSource('track')">🎵 Из моих треков</button>
     </div>
-    <input type="file" id="audioFile" accept="audio/*" style="display:none;">
-    <div class="upload-status" id="uploadStatus"></div>
+
+    <div class="source-pane active" id="pane-file">
+        <p class="studio-hint">MP3, WAV, M4A, OGG, FLAC. До {{ $maxMb }} МБ и {{ $maxMin }} мин.</p>
+        <div class="upload-drop" id="dropZone">
+            <div class="big">⬆️</div>
+            <div id="dropText">Нажмите или перетащите файл сюда</div>
+        </div>
+        <input type="file" id="audioFile" accept="audio/*" style="display:none;">
+        <div class="upload-status" id="uploadStatus"></div>
+    </div>
+
+    <div class="source-pane" id="pane-track">
+        <div class="studio-field">
+            <label>Трек:</label>
+            <select id="trackSelect" class="studio-select" onchange="onTrackPicked()"><option value="">Загрузка...</option></select>
+        </div>
+        <div class="variant-row" id="variantRow" style="display:none;">
+            <button class="variant-pick active" data-v="1" onclick="pickVariant(1)">Вариант 1</button>
+            <button class="variant-pick" data-v="2" id="variantBtn2" onclick="pickVariant(2)">Вариант 2</button>
+        </div>
+    </div>
 </div>
 
 {{-- Step 2: operations --}}
@@ -69,13 +96,14 @@
         <button class="op-tab" data-op="upload_extend" onclick="selectOp('upload_extend')">➕ Продлить</button>
         <button class="op-tab" data-op="add_instrumental" onclick="selectOp('add_instrumental')">🎹 Сделать минус</button>
         <button class="op-tab" data-op="add_vocals" onclick="selectOp('add_vocals')">🎶 Добавить вокал</button>
+        <button class="op-tab" data-op="mashup" onclick="selectOp('mashup')">🔀 Мэшап</button>
     </div>
 
     {{-- Cover --}}
     <div class="op-form active" id="form-upload_cover">
-        <p class="studio-hint">Перепоём ваш трек в новом стиле.</p>
+        <p class="studio-hint">Перепоём выбранное аудио в новом стиле — новая аранжировка, тот же характер.</p>
         <div class="studio-field"><label>Название</label><input type="text" class="studio-input" id="cover-title" maxlength="100" placeholder="Название трека"></div>
-        <div class="studio-field"><label>Стиль</label><input type="text" class="studio-input" id="cover-style" maxlength="200" placeholder="например, pop, rock"></div>
+        <div class="studio-field"><label>Новый стиль</label><input type="text" class="studio-input" id="cover-style" maxlength="200" placeholder="например, рок-баллада, акустика, EDM"></div>
         <div class="studio-field"><label>Текст / описание (необязательно)</label><textarea class="studio-textarea" id="cover-prompt" maxlength="5000"></textarea></div>
         <label class="checkbox-row"><input type="checkbox" id="cover-instr"> Без вокала (инструментал)</label>
         <button class="studio-submit" onclick="submitOp('upload_cover')">Создать кавер · 1 песня</button>
@@ -83,7 +111,7 @@
 
     {{-- Extend --}}
     <div class="op-form" id="form-upload_extend">
-        <p class="studio-hint">Допишем продолжение к вашему файлу.</p>
+        <p class="studio-hint">Допишем продолжение к аудио.</p>
         <div class="studio-field"><label>Название</label><input type="text" class="studio-input" id="ext-title" maxlength="100"></div>
         <div class="studio-field"><label>Стиль</label><input type="text" class="studio-input" id="ext-style" maxlength="200" placeholder="например, pop"></div>
         <div class="studio-field"><label>С какой секунды продолжить (необязательно)</label><input type="number" class="studio-input" id="ext-continue" min="0" step="1" placeholder="с конца, если пусто"></div>
@@ -93,7 +121,7 @@
 
     {{-- Add instrumental --}}
     <div class="op-form" id="form-add_instrumental">
-        <p class="studio-hint">Уберём вокал и сделаем минусовку из вашего трека.</p>
+        <p class="studio-hint">Создадим инструментальную версию — минусовку в заданном стиле.</p>
         <div class="studio-field"><label>Название</label><input type="text" class="studio-input" id="instr-title" maxlength="100"></div>
         <div class="studio-field"><label>Стиль / инструменты</label><input type="text" class="studio-input" id="instr-tags" maxlength="200" placeholder="например, piano, ambient"></div>
         <div class="studio-field"><label>Исключить (необязательно)</label><input type="text" class="studio-input" id="instr-neg" maxlength="200" placeholder="например, heavy metal"></div>
@@ -102,12 +130,25 @@
 
     {{-- Add vocals --}}
     <div class="op-form" id="form-add_vocals">
-        <p class="studio-hint">Добавим вокал к вашему инструменталу.</p>
+        <p class="studio-hint">Добавим вокал к инструменталу. Лучше всего работает с чистым минусом.</p>
+        <label class="checkbox-row" id="vocStemRow" style="display:none;"><input type="checkbox" id="voc-use-stem" checked> Использовать минусовку трека (стем)</label>
         <div class="studio-field"><label>Название</label><input type="text" class="studio-input" id="voc-title" maxlength="100"></div>
         <div class="studio-field"><label>Стиль</label><input type="text" class="studio-input" id="voc-style" maxlength="200" placeholder="например, pop, soul"></div>
         <div class="studio-field"><label>Текст / описание вокала</label><textarea class="studio-textarea" id="voc-prompt" maxlength="5000"></textarea></div>
         <div class="studio-field"><label>Исключить (необязательно)</label><input type="text" class="studio-input" id="voc-neg" maxlength="200"></div>
         <button class="studio-submit" onclick="submitOp('add_vocals')">Добавить вокал · 1 песня</button>
+    </div>
+
+    {{-- Mashup --}}
+    <div class="op-form" id="form-mashup">
+        <p class="studio-hint">Смешаем два трека в один. Первый — выбранный источник, второй выберите ниже.</p>
+        <div class="studio-field">
+            <label>Второй трек:</label>
+            <select id="mashup-second" class="studio-select"><option value="">Загрузка...</option></select>
+        </div>
+        <div class="studio-field"><label>Название (необязательно)</label><input type="text" class="studio-input" id="mashup-title" maxlength="100"></div>
+        <div class="studio-field"><label>Стиль (необязательно)</label><input type="text" class="studio-input" id="mashup-style" maxlength="200" placeholder="например, lo-fi, dance"></div>
+        <button class="studio-submit" onclick="submitOp('mashup')">Смешать · 1 песня</button>
     </div>
 </div>
 @endif
@@ -117,7 +158,11 @@
 @if($trackOpsAllowed)
 <script>
     const CSRF = '{{ csrf_token() }}';
+    let sourceMode = 'file';        // file | track
     let uploadedUrl = null;
+    let myTracks = [];
+    let pickedSongId = null;
+    let pickedVariant = 1;
     let currentOp = 'upload_cover';
 
     const dropZone = document.getElementById('dropZone');
@@ -148,7 +193,7 @@
                 statusEl.style.color = 'var(--success)';
                 statusEl.textContent = '✅ Файл загружен: ' + file.name;
                 document.getElementById('dropText').textContent = '✅ ' + file.name + ' — нажмите, чтобы заменить';
-                document.getElementById('opsCard').style.display = '';
+                refreshOpsVisibility();
             } else {
                 statusEl.style.color = 'var(--danger)';
                 statusEl.textContent = '❌ ' + (d.error || 'Ошибка загрузки');
@@ -159,34 +204,132 @@
         }
     }
 
+    // ===== SOURCE =====
+    function selectSource(mode) {
+        sourceMode = mode;
+        document.querySelectorAll('.source-tab').forEach(t => t.classList.toggle('active', t.dataset.src === mode));
+        document.getElementById('pane-file').classList.toggle('active', mode === 'file');
+        document.getElementById('pane-track').classList.toggle('active', mode === 'track');
+        if (mode === 'track' && !myTracks.length) loadTracks();
+        refreshOpsVisibility();
+    }
+
+    let tracksPromise = null;
+    function loadTracks() {
+        if (!tracksPromise) tracksPromise = (async () => {
+            try {
+                const r = await fetch('/api/songs', { headers:{'X-CSRF-TOKEN': CSRF}, credentials:'same-origin' });
+                const d = await r.json();
+                myTracks = (d.songs || []).filter(s => s.audio_url_1);
+                fillTrackSelect(document.getElementById('trackSelect'), '— выберите трек —');
+                fillMashupSecond();
+            } catch(e) {
+                document.getElementById('trackSelect').innerHTML = '<option value="">Ошибка загрузки</option>';
+            }
+        })();
+        return tracksPromise;
+    }
+
+    function esc(s) { return (s || 'Без названия').replace(/</g, '&lt;'); }
+
+    function fillTrackSelect(sel, placeholder) {
+        sel.innerHTML = '<option value="">' + placeholder + '</option>' +
+            myTracks.map(s => `<option value="${s.id}">${esc(s.title)} · ${s.created_at || ''}</option>`).join('');
+    }
+
+    function onTrackPicked() {
+        pickedSongId = parseInt(document.getElementById('trackSelect').value) || null;
+        pickedVariant = 1;
+        const t = myTracks.find(s => s.id === pickedSongId);
+        const row = document.getElementById('variantRow');
+        if (t) {
+            row.style.display = '';
+            document.getElementById('variantBtn2').style.display = t.audio_url_2 ? '' : 'none';
+            document.querySelectorAll('.variant-pick').forEach(b => b.classList.toggle('active', b.dataset.v === '1'));
+        } else {
+            row.style.display = 'none';
+        }
+        refreshOpsVisibility();
+    }
+
+    function pickVariant(v) {
+        pickedVariant = v;
+        document.querySelectorAll('.variant-pick').forEach(b => b.classList.toggle('active', parseInt(b.dataset.v) === v));
+    }
+
+    function sourceReady() {
+        return sourceMode === 'file' ? !!uploadedUrl : !!pickedSongId;
+    }
+
+    function refreshOpsVisibility() {
+        document.getElementById('opsCard').style.display = sourceReady() ? '' : 'none';
+        // «Использовать стем» — только для источника-трека
+        document.getElementById('vocStemRow').style.display = (sourceMode === 'track' && pickedSongId) ? '' : 'none';
+        if (currentOp === 'mashup') fillMashupSecond();
+    }
+
+    // ===== OPS =====
     function selectOp(op) {
         currentOp = op;
         document.querySelectorAll('.op-tab').forEach(t => t.classList.toggle('active', t.dataset.op === op));
         document.querySelectorAll('.op-form').forEach(f => f.classList.toggle('active', f.id === 'form-' + op));
+        if (op === 'mashup') {
+            if (!myTracks.length) loadTracks(); else fillMashupSecond();
+        }
+    }
+
+    function fillMashupSecond() {
+        const sel = document.getElementById('mashup-second');
+        if (!sel) return;
+        // второй источник — любой трек, кроме выбранного первым
+        const options = myTracks.filter(s => !(sourceMode === 'track' && s.id === pickedSongId));
+        sel.innerHTML = '<option value="">— выберите второй трек —</option>' +
+            options.map(s => `<option value="${s.id}">${esc(s.title)} · ${s.created_at || ''}</option>`).join('');
+        if (!myTracks.length) loadTracks();
     }
 
     function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
 
-    async function submitOp(op) {
-        if (!uploadedUrl) { alert('Сначала загрузите файл'); return; }
-        let url, body = { upload_url: uploadedUrl };
+    function sourceBody() {
+        // общий источник для не-мэшап операций
+        if (sourceMode === 'file') return { upload_url: uploadedUrl };
+        return { song_id: pickedSongId, variant: pickedVariant };
+    }
 
-        if (op === 'upload_cover') {
-            url = '/api/track-ops/upload-cover';
-            body.title = val('cover-title'); body.style = val('cover-style');
-            body.prompt = val('cover-prompt'); body.instrumental = document.getElementById('cover-instr').checked;
-        } else if (op === 'upload_extend') {
-            url = '/api/track-ops/upload-extend';
-            body.title = val('ext-title'); body.style = val('ext-style'); body.prompt = val('ext-prompt');
-            const c = val('ext-continue'); if (c !== '') body.continue_at = parseFloat(c);
-        } else if (op === 'add_instrumental') {
-            url = '/api/track-ops/add-instrumental';
-            body.title = val('instr-title'); body.tags = val('instr-tags'); body.negative_tags = val('instr-neg');
-            if (!body.title || !body.tags) { alert('Заполните название и стиль'); return; }
-        } else if (op === 'add_vocals') {
-            url = '/api/track-ops/add-vocals';
-            body.title = val('voc-title'); body.style = val('voc-style'); body.prompt = val('voc-prompt'); body.negative_tags = val('voc-neg');
-            if (!body.title || !body.style || !body.prompt) { alert('Заполните название, стиль и текст вокала'); return; }
+    async function submitOp(op) {
+        if (!sourceReady()) { alert('Сначала выберите источник: файл или трек'); return; }
+        let url, body;
+
+        if (op === 'mashup') {
+            const second = parseInt(document.getElementById('mashup-second').value) || null;
+            if (!second) { alert('Выберите второй трек'); return; }
+            body = { song_ids: [], upload_urls: [] };
+            if (sourceMode === 'file') body.upload_urls.push(uploadedUrl); else body.song_ids.push(pickedSongId);
+            body.song_ids.push(second);
+            if (val('mashup-title')) body.title = val('mashup-title');
+            if (val('mashup-style')) body.style = val('mashup-style');
+            url = '/api/track-ops/mashup';
+        } else {
+            body = sourceBody();
+            if (op === 'upload_cover') {
+                url = '/api/track-ops/upload-cover';
+                body.title = val('cover-title'); body.style = val('cover-style');
+                body.prompt = val('cover-prompt'); body.instrumental = document.getElementById('cover-instr').checked;
+                if (!body.style) { alert('Укажите новый стиль'); return; }
+            } else if (op === 'upload_extend') {
+                url = '/api/track-ops/upload-extend';
+                body.title = val('ext-title'); body.style = val('ext-style'); body.prompt = val('ext-prompt');
+                const c = val('ext-continue'); if (c !== '') body.continue_at = parseFloat(c);
+            } else if (op === 'add_instrumental') {
+                url = '/api/track-ops/add-instrumental';
+                body.title = val('instr-title'); body.tags = val('instr-tags'); body.negative_tags = val('instr-neg');
+                if (!body.title || !body.tags) { alert('Заполните название и стиль'); return; }
+            } else if (op === 'add_vocals') {
+                url = '/api/track-ops/add-vocals';
+                body.title = val('voc-title'); body.style = val('voc-style'); body.prompt = val('voc-prompt'); body.negative_tags = val('voc-neg');
+                if (sourceMode === 'track' && document.getElementById('voc-use-stem').checked) body.source = 'instrumental';
+                if (!body.title || !body.style || !body.prompt) { alert('Заполните название, стиль и текст вокала'); return; }
+            }
         }
 
         const btn = document.querySelector('#form-' + op + ' .studio-submit');
@@ -201,6 +344,22 @@
             else { alert('❌ ' + (d.error || 'Ошибка')); btn.disabled = false; btn.textContent = orig; }
         } catch(e) { alert('Ошибка: ' + e.message); btn.disabled = false; btn.textContent = orig; }
     }
+
+    // Прямой заход с параметрами: /studio?op=upload_cover&song=123
+    (function initFromQuery() {
+        const q = new URLSearchParams(window.location.search);
+        const song = parseInt(q.get('song')) || null;
+        const op = q.get('op');
+        if (song) {
+            selectSource('track');
+            loadTracks().then(() => {
+                const sel = document.getElementById('trackSelect');
+                sel.value = String(song);
+                onTrackPicked();
+            });
+        }
+        if (op && document.querySelector(`.op-tab[data-op="${op}"]`)) selectOp(op);
+    })();
 </script>
 @endif
 @endpush

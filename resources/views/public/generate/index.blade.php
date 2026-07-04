@@ -1112,6 +1112,25 @@
     <br>
 </div>
 
+@php
+    $trackOpsAllowedIds = config('services.track_ops.allowed_user_ids', []);
+    $trackOpsTeaser = empty($trackOpsAllowedIds)
+        || in_array('*', $trackOpsAllowedIds, true)
+        || in_array((string) ($authUser->user_id ?? ''), $trackOpsAllowedIds, true);
+@endphp
+@if($trackOpsTeaser)
+<div style="max-width:720px;margin:0 auto 24px;padding:0 16px;">
+    <a href="{{ $authUser ? route('studio') : url('/auth') }}" style="display:flex;align-items:center;gap:14px;background:var(--bg-card, #fff);border:1.5px solid rgba(124,58,237,0.25);border-radius:16px;padding:16px 18px;text-decoration:none;color:inherit;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+        <span style="font-size:30px;">🎚</span>
+        <span style="flex:1;">
+            <span style="display:block;font-size:15px;font-weight:700;">Новое: студия обработки треков</span>
+            <span style="display:block;font-size:13px;opacity:0.7;margin-top:2px;">Кавер в новом стиле, продление, минусовка, новый вокал и мэшап — из своего аудио или готового трека</span>
+        </span>
+        <span style="font-size:18px;color:#7c3aed;">→</span>
+    </a>
+</div>
+@endif
+
 <div class="pg-wizard" id="pg-wizard">
     <div class="pg-progress" id="pg-progress">
         <div class="pg-progress-step active"></div>

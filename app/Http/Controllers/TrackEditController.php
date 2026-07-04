@@ -183,7 +183,7 @@ class TrackEditController extends Controller
     }
 
     // ---------------------------------------------------------------
-    //  Операции над загруженным аудио
+    //  Операции над аудио-источником (загруженный файл ИЛИ свой трек)
     // ---------------------------------------------------------------
 
     public function uploadCover(Request $request)
@@ -194,7 +194,9 @@ class TrackEditController extends Controller
         }
 
         $request->validate([
-            'upload_url' => 'required|string|url|max:1000',
+            'upload_url' => 'required_without:song_id|nullable|string|url|max:1000',
+            'song_id' => 'required_without:upload_url|nullable|integer',
+            'variant' => 'nullable|integer|in:1,2',
             'title' => 'nullable|string|max:100',
             'style' => 'nullable|string|max:1000',
             'prompt' => 'nullable|string|max:5000',
@@ -202,8 +204,13 @@ class TrackEditController extends Controller
             'vocal_gender' => 'nullable|string|in:m,f',
         ]);
 
+        [$sourceUrl, $parentSong, $err] = $this->resolveSource($user, $request);
+        if ($err) {
+            return $err;
+        }
+
         $result = $this->suno->uploadCover([
-            'upload_url' => $request->input('upload_url'),
+            'upload_url' => $sourceUrl,
             'custom_mode' => true,
             'instrumental' => $request->boolean('instrumental'),
             'title' => $request->input('title'),
@@ -213,9 +220,10 @@ class TrackEditController extends Controller
         ]);
 
         return $this->launch($user, $result, 'upload_cover', [
-            'title' => $request->input('title') ?: 'Кавер',
+            'title' => $request->input('title') ?: ($parentSong ? $parentSong->title.' (кавер)' : 'Кавер'),
             'genre' => $request->input('style'),
-            'lyrics' => $request->input('prompt'),
+            'lyrics' => $request->input('prompt') ?: $parentSong?->lyrics,
+            'parent_song_id' => $parentSong?->id,
         ]);
     }
 
@@ -227,7 +235,9 @@ class TrackEditController extends Controller
         }
 
         $request->validate([
-            'upload_url' => 'required|string|url|max:1000',
+            'upload_url' => 'required_without:song_id|nullable|string|url|max:1000',
+            'song_id' => 'required_without:upload_url|nullable|integer',
+            'variant' => 'nullable|integer|in:1,2',
             'title' => 'nullable|string|max:100',
             'style' => 'nullable|string|max:1000',
             'prompt' => 'nullable|string|max:5000',
@@ -236,8 +246,13 @@ class TrackEditController extends Controller
             'vocal_gender' => 'nullable|string|in:m,f',
         ]);
 
+        [$sourceUrl, $parentSong, $err] = $this->resolveSource($user, $request);
+        if ($err) {
+            return $err;
+        }
+
         $result = $this->suno->uploadExtend([
-            'upload_url' => $request->input('upload_url'),
+            'upload_url' => $sourceUrl,
             'title' => $request->input('title'),
             'style' => $request->input('style'),
             'prompt' => $request->input('prompt'),
@@ -247,9 +262,10 @@ class TrackEditController extends Controller
         ]);
 
         return $this->launch($user, $result, 'upload_extend', [
-            'title' => $request->input('title') ?: 'Продление',
+            'title' => $request->input('title') ?: ($parentSong ? $parentSong->title.' (продолжение)' : 'Продление'),
             'genre' => $request->input('style'),
             'lyrics' => $request->input('prompt'),
+            'parent_song_id' => $parentSong?->id,
         ]);
     }
 
@@ -261,14 +277,21 @@ class TrackEditController extends Controller
         }
 
         $request->validate([
-            'upload_url' => 'required|string|url|max:1000',
+            'upload_url' => 'required_without:song_id|nullable|string|url|max:1000',
+            'song_id' => 'required_without:upload_url|nullable|integer',
+            'variant' => 'nullable|integer|in:1,2',
             'title' => 'required|string|max:100',
             'tags' => 'required|string|max:1000',
             'negative_tags' => 'nullable|string|max:1000',
         ]);
 
+        [$sourceUrl, $parentSong, $err] = $this->resolveSource($user, $request);
+        if ($err) {
+            return $err;
+        }
+
         $result = $this->suno->addInstrumental([
-            'upload_url' => $request->input('upload_url'),
+            'upload_url' => $sourceUrl,
             'title' => $request->input('title'),
             'tags' => $request->input('tags'),
             'negative_tags' => $request->input('negative_tags', ''),
@@ -277,6 +300,7 @@ class TrackEditController extends Controller
         return $this->launch($user, $result, 'add_instrumental', [
             'title' => $request->input('title'),
             'genre' => $request->input('tags'),
+            'parent_song_id' => $parentSong?->id,
         ]);
     }
 
@@ -288,7 +312,11 @@ class TrackEditController extends Controller
         }
 
         $request->validate([
-            'upload_url' => 'required|string|url|max:1000',
+            'upload_url' => 'required_without:song_id|nullable|string|url|max:1000',
+            'song_id' => 'required_without:upload_url|nullable|integer',
+            'variant' => 'nullable|integer|in:1,2',
+            // Для трека-источника: instrumental — взять минусовку (стем), file — сам трек
+            'source' => 'nullable|string|in:file,instrumental',
             'prompt' => 'required|string|max:5000',
             'title' => 'required|string|max:100',
             'style' => 'required|string|max:1000',
@@ -296,8 +324,13 @@ class TrackEditController extends Controller
             'vocal_gender' => 'nullable|string|in:m,f',
         ]);
 
+        [$sourceUrl, $parentSong, $err] = $this->resolveSource($user, $request);
+        if ($err) {
+            return $err;
+        }
+
         $result = $this->suno->addVocals([
-            'upload_url' => $request->input('upload_url'),
+            'upload_url' => $sourceUrl,
             'prompt' => $request->input('prompt'),
             'title' => $request->input('title'),
             'style' => $request->input('style'),
@@ -309,6 +342,7 @@ class TrackEditController extends Controller
             'title' => $request->input('title'),
             'genre' => $request->input('style'),
             'lyrics' => $request->input('prompt'),
+            'parent_song_id' => $parentSong?->id,
         ]);
     }
 
@@ -319,32 +353,31 @@ class TrackEditController extends Controller
             return $denied;
         }
 
+        // Источники можно смешивать: свои треки + загруженные файлы, всего ровно 2
         $request->validate([
-            'song_ids' => 'nullable|array|size:2',
+            'song_ids' => 'nullable|array|max:2',
             'song_ids.*' => 'integer',
-            'upload_urls' => 'nullable|array|size:2',
+            'upload_urls' => 'nullable|array|max:2',
             'upload_urls.*' => 'string|url|max:1000',
             'title' => 'nullable|string|max:100',
             'style' => 'nullable|string|max:1000',
             'prompt' => 'nullable|string|max:5000',
         ]);
 
-        $urls = $request->input('upload_urls', []);
+        $urls = array_values($request->input('upload_urls', []));
+        $firstSong = null;
 
-        // Если переданы song_ids — берём публичные URL первых вариантов
-        if (empty($urls) && $request->filled('song_ids')) {
-            $urls = [];
-            foreach ($request->input('song_ids') as $sid) {
-                $s = $this->ownedSong($user, (int) $sid);
-                if (! $s || ! $s->file_path) {
-                    return response()->json(['error' => 'Один из треков недоступен для мэшапа'], 422);
-                }
-                $urls[] = $s->file_path;
+        foreach ($request->input('song_ids', []) as $sid) {
+            $s = $this->ownedSong($user, (int) $sid);
+            if (! $s || ! $s->file_path) {
+                return response()->json(['error' => 'Один из треков недоступен для мэшапа'], 422);
             }
+            $firstSong = $firstSong ?: $s;
+            $urls[] = $s->file_path;
         }
 
         if (count($urls) !== 2) {
-            return response()->json(['error' => 'Для мэшапа нужно ровно 2 трека'], 422);
+            return response()->json(['error' => 'Для мэшапа нужно ровно 2 трека (свои треки и/или загруженные файлы)'], 422);
         }
 
         $custom = $request->filled('title') || $request->filled('style');
@@ -361,6 +394,7 @@ class TrackEditController extends Controller
             'title' => $request->input('title') ?: 'Мэшап',
             'genre' => $request->input('style'),
             'lyrics' => $request->input('prompt'),
+            'parent_song_id' => $firstSong?->id,
         ]);
     }
 
@@ -371,6 +405,45 @@ class TrackEditController extends Controller
     private function user(Request $request)
     {
         return $request->get('auth_user');
+    }
+
+    /**
+     * Определяет аудио-источник операции: загруженный файл (upload_url)
+     * или собственный трек пользователя (song_id + variant [+ source]).
+     *
+     * @return array{0: ?string, 1: ?Song, 2: mixed} [url, parentSong, errorResponse]
+     */
+    private function resolveSource($user, Request $request): array
+    {
+        if ($request->filled('upload_url')) {
+            return [$request->input('upload_url'), null, null];
+        }
+
+        $song = $this->ownedSong($user, (int) $request->input('song_id'));
+        if (! $song) {
+            return [null, null, response()->json(['error' => 'Трек не найден'], 404)];
+        }
+
+        $variant = (int) $request->input('variant', 1);
+
+        // source=instrumental — берём минусовку (стем), если она уже сделана
+        if ($request->input('source') === 'instrumental') {
+            $url = $variant === 2 ? $song->instrumental_url_2 : $song->instrumental_url_1;
+            if (! $url) {
+                return [null, null, response()->json([
+                    'error' => 'У этого варианта ещё нет минусовки. Сначала раздели трек на минус и голос.',
+                ], 422)];
+            }
+
+            return [$url, $song, null];
+        }
+
+        $url = $variant === 2 ? $song->file_path_2 : $song->file_path;
+        if (! $url) {
+            return [null, null, response()->json(['error' => 'Аудиофайл трека недоступен'], 422)];
+        }
+
+        return [$url, $song, null];
     }
 
     private function ownedSong($user, int $songId): ?Song

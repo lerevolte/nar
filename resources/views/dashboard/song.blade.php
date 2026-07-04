@@ -181,6 +181,7 @@
 
     /* Track operations */
     .track-ops-grid { display:flex; flex-direction:column; gap:8px; }
+    .track-ops-grid a.chart-add-btn { text-decoration:none; color:var(--text-primary); }
     .op-input { width:100%; padding:12px; border:1.5px solid var(--border); border-radius:var(--radius-md); font-size:14px; font-family:inherit; background:var(--bg-input); color:var(--text-primary); }
     .op-input:focus { outline:none; border-color:var(--accent); }
 </style>
@@ -415,13 +416,16 @@
 @if($song->file_path && $song->suno_task_id && $song->user_id === $authUser->user_id && $trackOpsAllowed)
 <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-top:16px;">
     <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">🎛 Изменить трек</h3>
-    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Продлите песню, замените фрагмент или смешайте с другим треком</p>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">Понравилась песня? Сделайте её длиннее, перепойте в другом стиле или получите минусовку</p>
     <div class="track-ops-grid">
         <button class="chart-add-btn" onclick="openExtendModal()">➕ Продлить трек</button>
+        <a class="chart-add-btn" href="{{ route('studio') }}?op=upload_cover&song={{ $song->id }}">🎤 Кавер в новом стиле</a>
+        <a class="chart-add-btn" href="{{ route('studio') }}?op=add_instrumental&song={{ $song->id }}">🎹 Минусовка в новом стиле</a>
+        <a class="chart-add-btn" href="{{ route('studio') }}?op=add_vocals&song={{ $song->id }}">🎶 Новый вокал на минус</a>
         <button class="chart-add-btn" onclick="openMashupModal()">🔀 Сделать мэшап</button>
         <button class="chart-add-btn" onclick="openReplaceModal()">✏️ Заменить фрагмент</button>
     </div>
-    <p style="font-size:12px;color:var(--text-tertiary);margin-top:10px;">Продление и мэшап спишут 1 песню с баланса. Замена фрагмента — отдельная функция.</p>
+    <p style="font-size:12px;color:var(--text-tertiary);margin-top:10px;">Каждая операция — 1 песня с баланса. Замена фрагмента — отдельная функция.</p>
 </div>
 
 {{-- Extend modal --}}

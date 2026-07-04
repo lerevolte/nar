@@ -124,7 +124,8 @@
         <div class="studio-field"><label>Новый стиль</label><input type="text" class="studio-input" id="cover-style" maxlength="200" placeholder="например, рок-баллада, акустика, в стиле Eminem"></div>
         <div class="studio-field">
             <label>Текст кавера (что будет спето)</label>
-            <textarea class="studio-textarea" id="cover-prompt" maxlength="5000" placeholder="При выборе своего трека текст подставится автоматически" style="min-height:120px;"></textarea>
+            <textarea class="studio-textarea" id="cover-prompt" maxlength="5000" placeholder="При выборе своего трека текст подставится автоматически. Для загруженного файла — распознайте текст кнопкой ниже или оставьте пустым (нейросеть сочинит по звучанию)" style="min-height:120px;"></textarea>
+            <button class="translate-btn" id="cover-transcribe-btn" onclick="transcribeCoverLyrics()" style="display:none;width:100%;margin-top:8px;">Распознать текст из файла</button>
             <div class="translate-row">
                 <select class="studio-select" id="cover-lang">
                     <option value="en">Перевести на английский</option>
@@ -345,6 +346,28 @@
     function refreshOpsVisibility() {
         document.getElementById('opsCard').style.display = sourceReady() ? '' : 'none';
         document.getElementById('vocStemRow').style.display = (sourceMode === 'track' && pickedSongId) ? '' : 'none';
+        // Распознавание текста — только для загруженного файла
+        document.getElementById('cover-transcribe-btn').style.display = (sourceMode === 'file' && uploadedUrl) ? '' : 'none';
+    }
+
+    // ===== TRANSCRIBE (Whisper) =====
+    async function transcribeCoverLyrics() {
+        if (!uploadedUrl) { alert('Сначала загрузите файл'); return; }
+        const btn = document.getElementById('cover-transcribe-btn');
+        const orig = btn.textContent; btn.disabled = true; btn.textContent = '⏳ Распознаю (до минуты)...';
+        try {
+            const r = await fetch('/api/track-ops/transcribe', {
+                method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN': CSRF},
+                credentials:'same-origin',
+                body: JSON.stringify({ upload_url: uploadedUrl })
+            });
+            const d = await r.json();
+            if (r.ok && d.success) {
+                const ta = document.getElementById('cover-prompt');
+                ta.value = d.text; ta.dataset.autofilled = '0';
+            } else alert('❌ ' + (d.error || 'Ошибка распознавания'));
+        } catch(e) { alert('Ошибка: ' + e.message); }
+        finally { btn.disabled = false; btn.textContent = orig; }
     }
 
     // ===== TRANSLATE (как на /create) =====
@@ -401,7 +424,9 @@
                 body.title = val('cover-title'); body.style = val('cover-style');
                 body.prompt = val('cover-prompt'); body.instrumental = document.getElementById('cover-instr').checked;
                 if (!body.style) { alert('Укажите новый стиль'); return; }
-                if (!body.instrumental && !body.prompt && sourceMode === 'file') { alert('Укажите текст кавера или включите режим «без вокала»'); return; }
+                if (!body.instrumental && !body.prompt && sourceMode === 'file') {
+                    if (!confirm('Текст не указан — нейросеть сочинит слова сама по звучанию файла.\n\nСовет: нажмите «Распознать текст из файла», чтобы сохранить оригинальные слова.\n\nПродолжить без текста?')) return;
+                }
             } else if (op === 'upload_extend') {
                 url = '/api/track-ops/upload-extend';
                 body.title = val('ext-title'); body.style = val('ext-style'); body.prompt = val('ext-prompt');

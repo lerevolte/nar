@@ -1344,7 +1344,13 @@ class SunoService
                 $payload['prompt'] = mb_substr($params['prompt'] ?? '', 0, 5000);
             }
         } else {
-            $payload['prompt'] = mb_substr($params['prompt'] ?? '', 0, 500);
+            // Non-custom: единственное поле — prompt-описание (стиль уже
+            // нормализован выше, приклеиваем его к описанию)
+            $prompt = trim($params['prompt'] ?? '');
+            if (! empty($params['style'])) {
+                $prompt = trim($prompt.' Style: '.$params['style']);
+            }
+            $payload['prompt'] = mb_substr($prompt, 0, 500);
         }
 
         $this->applyCommonOptions($payload, $params);

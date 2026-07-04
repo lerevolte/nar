@@ -15,6 +15,7 @@ Route::post('/landing/play', [App\Http\Controllers\LandingController::class, 'in
 Route::middleware(['tg.auth', 'miniapp', 'maxapp'])->group(function () {
     Route::get('/user', function (\Illuminate\Http\Request $request) {
         $user = $request->get('auth_user');
+
         return response()->json([
             'id' => $user->user_id,
             'username' => $user->username,
@@ -41,6 +42,7 @@ Route::middleware(['tg.auth', 'miniapp', 'maxapp'])->group(function () {
 
     // Операции над треками (extend / cover / instrumental / vocals / mashup / replace)
     Route::post('/track-ops/upload', [App\Http\Controllers\TrackEditController::class, 'upload']);
+    Route::post('/track-ops/transcribe', [App\Http\Controllers\TrackEditController::class, 'transcribe']);
     Route::post('/track-ops/extend', [App\Http\Controllers\TrackEditController::class, 'extend']);
     Route::post('/track-ops/upload-cover', [App\Http\Controllers\TrackEditController::class, 'uploadCover']);
     Route::post('/track-ops/upload-extend', [App\Http\Controllers\TrackEditController::class, 'uploadExtend']);
@@ -65,7 +67,6 @@ Route::middleware(['tg.auth', 'miniapp', 'maxapp'])->group(function () {
     Route::post('/favorites/toggle', [App\Http\Controllers\FavoriteController::class, 'toggle']);
     Route::get('/favorites', [App\Http\Controllers\FavoriteController::class, 'index']);
 
-
     // Payment
     Route::post('/payment/create', [App\Http\Controllers\PaymentController::class, 'create']);
     Route::get('/payment/status', [App\Http\Controllers\PaymentController::class, 'checkStatus']);
@@ -73,7 +74,6 @@ Route::middleware(['tg.auth', 'miniapp', 'maxapp'])->group(function () {
     Route::post('/promo/check', [App\Http\Controllers\PaymentController::class, 'checkPromo']);
     Route::post('/promo/apply', [App\Http\Controllers\PaymentController::class, 'applyPromo']);
     Route::post('/promo/pay', [App\Http\Controllers\PaymentController::class, 'createPromoPayment']);
-
 
     // Admin broadcast API
     Route::post('/admin/broadcast/count-segment', [App\Http\Controllers\BroadcastController::class, 'countSegment']);
@@ -83,11 +83,10 @@ Route::middleware(['tg.auth', 'miniapp', 'maxapp'])->group(function () {
 
     Route::post('/admin/promo/create', [App\Http\Controllers\PromoCodeController::class, 'create']);
     Route::post('/admin/promo/toggle', [App\Http\Controllers\PromoCodeController::class, 'toggle']);
-     
+
     // Web notifications (для всех юзеров)
     Route::get('/notifications', [App\Http\Controllers\BroadcastController::class, 'getNotifications']);
     Route::post('/notifications/read', [App\Http\Controllers\BroadcastController::class, 'markRead']);
-
 
 });
 

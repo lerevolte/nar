@@ -137,9 +137,13 @@
                 <button class="translate-btn" id="cover-translate-btn" onclick="translateCoverLyrics()">Перевести</button>
             </div>
         </div>
-        <p class="studio-hint" style="margin:-6px 0 14px;font-size:12px;">Известные песни защищены авторским правом — точный текст не пройдёт. Мы автоматически слегка переработаем формулировки (смысл и рифма сохранятся).</p>
         <label class="checkbox-row"><input type="checkbox" id="cover-instr"> Без вокала (инструментал)</label>
-        <button class="studio-submit" onclick="submitOp('upload_cover')">Создать кавер · 1 песня</button>
+        <button class="studio-submit" onclick="submitOp('upload_cover')">Создать кавер по аудио · 1 песня</button>
+
+        <div style="margin:14px 0 6px;padding-top:14px;border-top:1px solid var(--border);">
+            <p class="studio-hint" style="font-size:12px;margin-bottom:10px;">Известные песни (Круг, эстрада, чарты) защищены авторским правом — кавер по их аудио Suno отклонит. Для них — ремейк по тексту: слегка переработаем слова (смысл и рифма сохранятся) и создадим новую версию в вашем стиле. Мелодия будет новая.</p>
+            <button class="studio-submit" style="background:var(--bg-input);color:var(--text-primary);border:1.5px solid var(--border);" onclick="submitRemake(this)">Ремейк по тексту · 1 песня</button>
+        </div>
     </div>
 
     {{-- Extend --}}
@@ -458,6 +462,16 @@
 
             alert('❌ ' + (d.error || 'Ошибка')); btn.disabled = false; btn.textContent = orig;
         } catch(e) { alert('Ошибка: ' + e.message); btn.disabled = false; btn.textContent = orig; }
+    }
+
+    // Явный ремейк по тексту (кнопка) — без загрузки аудио
+    async function submitRemake(btn) {
+        const lyricsText = val('cover-prompt');
+        const style = val('cover-style');
+        if (!lyricsText) { alert('Вставьте текст песни в поле «Текст кавера»'); return; }
+        if (!style) { alert('Укажите стиль (например, «в стиле Eminem»)'); return; }
+        const orig = btn.textContent; btn.disabled = true;
+        await remakeFromText(btn, orig);
     }
 
     // Ремейк по тексту — переработка текста + обычная генерация (без исходного аудио)

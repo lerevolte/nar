@@ -30,6 +30,9 @@ class TrackEditController extends Controller
         'add_instrumental', 'add_vocals', 'mashup',
     ];
 
+    /** Дефолт для обязательного у Suno поля negativeTags. */
+    private const DEFAULT_NEGATIVE_TAGS = 'low quality, noise, distortion';
+
     public function __construct(private SunoService $suno) {}
 
     // ---------------------------------------------------------------
@@ -332,8 +335,8 @@ class TrackEditController extends Controller
             'upload_url' => 'required_without:song_id|nullable|string|url|max:1000',
             'song_id' => 'required_without:upload_url|nullable|integer',
             'variant' => 'nullable|integer|in:1,2',
-            'title' => 'required|string|max:100',
-            'tags' => 'required|string|max:1000',
+            'title' => 'nullable|string|max:100',
+            'tags' => 'nullable|string|max:1000',
             'negative_tags' => 'nullable|string|max:1000',
         ]);
 
@@ -342,16 +345,20 @@ class TrackEditController extends Controller
             return $err;
         }
 
+        // title / tags / negativeTags обязательны на стороне Suno — подставляем дефолты
+        $title = $request->input('title') ?: ($parentSong ? $parentSong->title.' (минус)' : 'Инструментал');
+        $tags = $request->input('tags') ?: ($parentSong?->genre ?: 'instrumental');
+
         $result = $this->suno->addInstrumental([
             'upload_url' => $sourceUrl,
-            'title' => $request->input('title'),
-            'tags' => $request->input('tags'),
-            'negative_tags' => $request->input('negative_tags', ''),
+            'title' => $title,
+            'tags' => $tags,
+            'negative_tags' => $request->input('negative_tags') ?: self::DEFAULT_NEGATIVE_TAGS,
         ]);
 
         return $this->launch($user, $result, 'add_instrumental', [
-            'title' => $request->input('title'),
-            'genre' => $request->input('tags'),
+            'title' => $title,
+            'genre' => $tags,
             'parent_song_id' => $parentSong?->id,
         ]);
     }
@@ -386,7 +393,7 @@ class TrackEditController extends Controller
             'prompt' => $request->input('prompt'),
             'title' => $request->input('title'),
             'style' => $request->input('style'),
-            'negative_tags' => $request->input('negative_tags', ''),
+            'negative_tags' => $request->input('negative_tags') ?: self::DEFAULT_NEGATIVE_TAGS,
             'vocal_gender' => $request->input('vocal_gender'),
         ]);
 

@@ -12,7 +12,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
         <h2 style="font-size: 20px; font-weight: 700; margin:0;">🎵 Все мои треки</h2>
         @if($trackOpsAllowed)
-            <a href="{{ route('studio') }}" class="btn btn-secondary btn-sm">Студия: обработать аудио</a>
+            <a href="{{ route('studio') }}" class="btn btn-secondary btn-sm">Студия: обработать треки</a>
         @endif
     </div>
     

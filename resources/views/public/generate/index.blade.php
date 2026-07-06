@@ -1475,7 +1475,7 @@
     <a href="{{ $authUser ? route('studio') : url('/auth') }}" style="display:block;background:white;border:1.5px solid rgba(124,58,237,0.2);border-radius:24px;padding:24px 28px;text-decoration:none;color:#1a1035;box-shadow:0 4px 16px rgba(0,0,0,0.06);">
         <span style="display:inline-block;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#7c3aed;background:rgba(124,58,237,0.08);border-radius:999px;padding:4px 12px;margin-bottom:10px;">Новое</span>
         <span style="display:block;font-size:17px;font-weight:800;">Студия обработки треков</span>
-        <span style="display:block;font-size:14px;opacity:0.65;margin-top:6px;line-height:1.5;">Кавер в новом стиле, продление, минусовка, новый вокал и мэшап — из своего аудио или уже созданного трека</span>
+        <span style="display:block;font-size:14px;opacity:0.65;margin-top:6px;line-height:1.5;">Кавер в новом стиле, продление, минусовка, новый вокал и мэшап из ваших треков</span>
         <span style="display:inline-block;margin-top:12px;font-size:14px;font-weight:700;color:#7c3aed;">Попробовать →</span>
     </a>
 </div>

@@ -340,14 +340,15 @@ class TrackEditController extends Controller
             'negative_tags' => 'nullable|string|max:1000',
         ]);
 
-        [$sourceUrl, $parentSong, $err] = $this->resolveSource($user, $request);
+        // Источник — вокальный стем: добавляем инструментал ПОД голос
+        [$sourceUrl, $parentSong, $err] = $this->resolveSource($user, $request, 'vocal');
         if ($err) {
             return $err;
         }
 
         // title / tags / negativeTags обязательны на стороне Suno — подставляем дефолты
-        $title = $request->input('title') ?: ($parentSong ? $parentSong->title.' (минус)' : 'Инструментал');
-        $tags = $request->input('tags') ?: ($parentSong?->genre ?: 'instrumental');
+        $title = $request->input('title') ?: ($parentSong ? $parentSong->title.' (аранжировка)' : 'Аранжировка');
+        $tags = $request->input('tags') ?: ($parentSong?->genre ?: 'pop');
 
         $result = $this->suno->addInstrumental([
             'upload_url' => $sourceUrl,
@@ -374,8 +375,6 @@ class TrackEditController extends Controller
             'upload_url' => 'required_without:song_id|nullable|string|url|max:1000',
             'song_id' => 'required_without:upload_url|nullable|integer',
             'variant' => 'nullable|integer|in:1,2',
-            // Для трека-источника: instrumental — взять минусовку (стем), file — сам трек
-            'source' => 'nullable|string|in:file,instrumental',
             'prompt' => 'required|string|max:5000',
             'title' => 'required|string|max:100',
             'style' => 'required|string|max:1000',
@@ -383,7 +382,9 @@ class TrackEditController extends Controller
             'vocal_gender' => 'nullable|string|in:m,f',
         ]);
 
-        [$sourceUrl, $parentSong, $err] = $this->resolveSource($user, $request);
+        // Источник — только инструментал-стем (минусовка): добавляем вокал НА минус,
+        // чтобы не коверкать уже существующий вокал трека.
+        [$sourceUrl, $parentSong, $err] = $this->resolveSource($user, $request, $request->filled('upload_url') ? null : 'instrumental');
         if ($err) {
             return $err;
         }
@@ -472,7 +473,7 @@ class TrackEditController extends Controller
      *
      * @return array{0: ?string, 1: ?Song, 2: mixed} [url, parentSong, errorResponse]
      */
-    private function resolveSource($user, Request $request): array
+    private function resolveSource($user, Request $request, ?string $forceSource = null): array
     {
         if ($request->filled('upload_url')) {
             return [$request->input('upload_url'), null, null];
@@ -484,14 +485,24 @@ class TrackEditController extends Controller
         }
 
         $variant = (int) $request->input('variant', 1);
+        $source = $forceSource ?? $request->input('source');
+        $needStem = 'Сначала разделите трек на минус и голос — это бесплатно, кнопка «Разделить» на странице трека.';
 
-        // source=instrumental — берём минусовку (стем), если она уже сделана
-        if ($request->input('source') === 'instrumental') {
+        // Инструментал-стем (минусовка) — для добавления вокала
+        if ($source === 'instrumental') {
             $url = $variant === 2 ? $song->instrumental_url_2 : $song->instrumental_url_1;
             if (! $url) {
-                return [null, null, response()->json([
-                    'error' => 'У этого варианта ещё нет минусовки. Сначала раздели трек на минус и голос.',
-                ], 422)];
+                return [null, null, response()->json(['error' => $needStem], 422)];
+            }
+
+            return [$url, $song, null];
+        }
+
+        // Вокальный стем — для добавления инструментала под голос
+        if ($source === 'vocal') {
+            $url = $variant === 2 ? $song->vocal_url_2 : $song->vocal_url_1;
+            if (! $url) {
+                return [null, null, response()->json(['error' => $needStem], 422)];
             }
 
             return [$url, $song, null];

@@ -86,8 +86,9 @@
     <div class="op-tabs">
         <button class="op-tab active" data-op="upload_cover" onclick="selectOp('upload_cover')">Кавер</button>
         <button class="op-tab" data-op="upload_extend" onclick="selectOp('upload_extend')">Продлить</button>
-        <button class="op-tab" data-op="add_instrumental" onclick="selectOp('add_instrumental')">Сделать минус</button>
-        <button class="op-tab" data-op="add_vocals" onclick="selectOp('add_vocals')">Добавить вокал</button>
+        <button class="op-tab" data-op="replace_section" onclick="selectOp('replace_section')">Заменить фрагмент</button>
+        <button class="op-tab" data-op="add_vocals" onclick="selectOp('add_vocals')">Вокал на минус</button>
+        <button class="op-tab" data-op="add_instrumental" onclick="selectOp('add_instrumental')">Музыка под голос</button>
         <button class="op-tab" data-op="mashup" onclick="selectOp('mashup')">Мэшап</button>
     </div>
 
@@ -122,7 +123,7 @@
 
     {{-- Extend --}}
     <div class="op-form" id="form-upload_extend">
-        <p class="studio-hint">Допишем продолжение к выбранному треку.</p>
+        <p class="studio-hint">Допишем продолжение к выбранному треку. Без указания секунды — продлеваем с конца в исходном стиле. Стиль и текст ниже учитываются, только если задана секунда продолжения.</p>
         <div class="studio-field"><label>Название</label><input type="text" class="studio-input" id="ext-title" maxlength="100"></div>
         <div class="studio-field"><label>Стиль</label><input type="text" class="studio-input" id="ext-style" maxlength="200" placeholder="например, pop"></div>
         <div class="studio-field"><label>С какой секунды продолжить (необязательно)</label><input type="number" class="studio-input" id="ext-continue" min="0" step="1" placeholder="с конца, если пусто"></div>
@@ -130,22 +131,34 @@
         <button class="studio-submit" onclick="submitOp('upload_extend')">Продлить · 1 песня</button>
     </div>
 
-    {{-- Add instrumental --}}
-    <div class="op-form" id="form-add_instrumental">
-        <p class="studio-hint">Создадим инструментальную версию — минусовку. Стиль по желанию (если пусто — возьмём жанр трека).</p>
-        <div class="studio-field"><label>Название (необязательно)</label><input type="text" class="studio-input" id="instr-title" maxlength="100"></div>
-        <div class="studio-field"><label>Стиль / инструменты (необязательно)</label><input type="text" class="studio-input" id="instr-tags" maxlength="200" placeholder="например, piano, ambient"></div>
-        <button class="studio-submit" onclick="submitOp('add_instrumental')">Сделать минус · 1 песня</button>
+    {{-- Replace section --}}
+    <div class="op-form" id="form-replace_section">
+        <p class="studio-hint">Перезапишем участок песни (от 6 до 60 сек) — например, поправить строчку. Остальная песня остаётся как есть.</p>
+        <div class="studio-field" style="display:flex;gap:10px;">
+            <div style="flex:1;"><label>Начало (сек)</label><input type="number" class="studio-input" id="rep-start" min="0" step="0.01" placeholder="10.0"></div>
+            <div style="flex:1;"><label>Конец (сек)</label><input type="number" class="studio-input" id="rep-end" min="0" step="0.01" placeholder="25.0"></div>
+        </div>
+        <div class="studio-field"><label>Стиль (теги)</label><input type="text" class="studio-input" id="rep-tags" maxlength="200" placeholder="например, pop, energetic"></div>
+        <div class="studio-field"><label>Что спеть в этом фрагменте</label><textarea class="studio-textarea" id="rep-prompt" maxlength="5000"></textarea></div>
+        <div class="studio-field"><label>Полный текст песни (с правкой)</label><textarea class="studio-textarea" id="rep-lyrics" maxlength="5000" style="min-height:120px;"></textarea></div>
+        <button class="studio-submit" onclick="submitOp('replace_section')">Заменить фрагмент · 1 песня</button>
     </div>
 
-    {{-- Add vocals --}}
+    {{-- Add vocals (на минус) --}}
     <div class="op-form" id="form-add_vocals">
-        <p class="studio-hint">Добавим вокал к треку. Лучше всего — к минусовке (стему), если она уже сделана.</p>
-        <label class="checkbox-row" id="vocStemRow"><input type="checkbox" id="voc-use-stem" checked> Использовать минусовку трека (стем)</label>
+        <p class="studio-hint">Добавим новый вокал на <b>минусовку</b> трека. Нужен инструментальный стем — сделайте бесплатное разделение на минус и голос на странице трека, затем возвращайтесь.</p>
         <div class="studio-field"><label>Название</label><input type="text" class="studio-input" id="voc-title" maxlength="100"></div>
         <div class="studio-field"><label>Стиль</label><input type="text" class="studio-input" id="voc-style" maxlength="200" placeholder="например, pop, soul"></div>
         <div class="studio-field"><label>Текст / описание вокала</label><textarea class="studio-textarea" id="voc-prompt" maxlength="5000"></textarea></div>
-        <button class="studio-submit" onclick="submitOp('add_vocals')">Добавить вокал · 1 песня</button>
+        <button class="studio-submit" onclick="submitOp('add_vocals')">Добавить вокал на минус · 1 песня</button>
+    </div>
+
+    {{-- Add instrumental (под голос) --}}
+    <div class="op-form" id="form-add_instrumental">
+        <p class="studio-hint">Создадим новую инструментальную аранжировку под <b>голос</b> трека. Нужен вокальный стем — сделайте бесплатное разделение на минус и голос на странице трека, затем возвращайтесь.</p>
+        <div class="studio-field"><label>Название (необязательно)</label><input type="text" class="studio-input" id="instr-title" maxlength="100"></div>
+        <div class="studio-field"><label>Стиль / инструменты (необязательно)</label><input type="text" class="studio-input" id="instr-tags" maxlength="200" placeholder="например, piano, lo-fi, rock"></div>
+        <button class="studio-submit" onclick="submitOp('add_instrumental')">Создать аранжировку · 1 песня</button>
     </div>
 
     {{-- Mashup --}}
@@ -248,13 +261,19 @@
     }
 
     function prefillCoverLyrics(item) {
-        const ta = document.getElementById('cover-prompt');
-        if (item && item.lyrics && (!ta.value.trim() || ta.dataset.autofilled === '1')) {
-            ta.value = item.lyrics;
-            ta.dataset.autofilled = '1';
-        }
+        // Текст трека -> в поле кавера и в поле «полный текст» для замены фрагмента
+        [['cover-prompt', item], ['rep-lyrics', item]].forEach(([id, it]) => {
+            const ta = document.getElementById(id);
+            if (ta && it && it.lyrics && (!ta.value.trim() || ta.dataset.autofilled === '1')) {
+                ta.value = it.lyrics;
+                ta.dataset.autofilled = '1';
+            }
+        });
     }
-    document.getElementById('cover-prompt').addEventListener('input', function() { this.dataset.autofilled = '0'; });
+    ['cover-prompt', 'rep-lyrics'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', function() { this.dataset.autofilled = '0'; });
+    });
 
     function pickVariant(v) {
         pickedVariant = v;
@@ -332,8 +351,15 @@
         } else if (op === 'add_vocals') {
             url = '/api/track-ops/add-vocals';
             body.title = val('voc-title'); body.style = val('voc-style'); body.prompt = val('voc-prompt');
-            if (document.getElementById('voc-use-stem').checked) body.source = 'instrumental';
             if (!body.title || !body.style || !body.prompt) { showError('Заполните название, стиль и текст вокала'); return; }
+        } else if (op === 'replace_section') {
+            url = '/api/track-ops/replace-section';
+            const start = parseFloat(val('rep-start')), end = parseFloat(val('rep-end'));
+            if (isNaN(start) || isNaN(end)) { showError('Укажите начало и конец фрагмента (в секундах)'); return; }
+            if (end - start < 6 || end - start > 60) { showError('Фрагмент должен быть от 6 до 60 секунд'); return; }
+            body.infill_start_s = start; body.infill_end_s = end;
+            body.tags = val('rep-tags'); body.prompt = val('rep-prompt'); body.full_lyrics = val('rep-lyrics');
+            if (!body.tags || !body.prompt || !body.full_lyrics) { showError('Заполните стиль, описание фрагмента и полный текст'); return; }
         }
 
         const btn = document.querySelector('#form-' + op + ' .studio-submit');

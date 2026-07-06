@@ -1317,22 +1317,20 @@ class SunoService
     {
         $params['style'] = $this->normalizeUserStyle($params['style'] ?? null);
 
-        $custom = isset($params['continue_at'])
-            || ! empty($params['prompt'])
-            || ! empty($params['style'])
-            || ! empty($params['title']);
+        // Кастомный режим — только если указана точка продолжения:
+        // Suno требует continueAt при defaultParamFlag=true, иначе «continueAt cannot be null».
+        // Без точки — продлеваем с конца в исходном стиле (defaultParamFlag=false).
+        $hasContinue = isset($params['continue_at']) && $params['continue_at'] !== null && $params['continue_at'] !== '';
 
         $payload = [
-            'defaultParamFlag' => $custom,
+            'defaultParamFlag' => $hasContinue,
             'audioId' => $params['audio_id'],
             'model' => $params['model'] ?? $this->defaultModel(),
             'callBackUrl' => self::TRACK_OP_CALLBACK,
         ];
 
-        if ($custom) {
-            if (isset($params['continue_at'])) {
-                $payload['continueAt'] = (float) $params['continue_at'];
-            }
+        if ($hasContinue) {
+            $payload['continueAt'] = (float) $params['continue_at'];
             if (! empty($params['style'])) {
                 $payload['style'] = mb_substr($params['style'], 0, 1000);
             }
@@ -1395,13 +1393,11 @@ class SunoService
     {
         $params['style'] = $this->normalizeUserStyle($params['style'] ?? null);
 
-        $custom = isset($params['continue_at'])
-            || ! empty($params['style'])
-            || ! empty($params['title']);
+        $hasContinue = isset($params['continue_at']) && $params['continue_at'] !== null && $params['continue_at'] !== '';
 
         $payload = [
             'uploadUrl' => $params['upload_url'],
-            'defaultParamFlag' => $custom,
+            'defaultParamFlag' => $hasContinue,
             'model' => $params['model'] ?? $this->defaultModel(),
             'callBackUrl' => self::TRACK_OP_CALLBACK,
         ];
@@ -1410,10 +1406,8 @@ class SunoService
             $payload['instrumental'] = (bool) $params['instrumental'];
         }
 
-        if ($custom) {
-            if (isset($params['continue_at'])) {
-                $payload['continueAt'] = (float) $params['continue_at'];
-            }
+        if ($hasContinue) {
+            $payload['continueAt'] = (float) $params['continue_at'];
             if (! empty($params['style'])) {
                 $payload['style'] = mb_substr($params['style'], 0, 1000);
             }
@@ -1423,8 +1417,6 @@ class SunoService
             if (empty($params['instrumental']) && ! empty($params['prompt'])) {
                 $payload['prompt'] = mb_substr($params['prompt'], 0, 5000);
             }
-        } elseif (! empty($params['prompt'])) {
-            $payload['prompt'] = mb_substr($params['prompt'], 0, 5000);
         }
 
         $this->applyCommonOptions($payload, $params);
@@ -1486,6 +1478,7 @@ class SunoService
         $params['style'] = $this->normalizeUserStyle($params['style'] ?? null);
 
         $custom = (bool) ($params['custom_mode'] ?? false);
+        // Мэшап по умолчанию — с вокалом (иначе получается голый инструментал)
         $instrumental = (bool) ($params['instrumental'] ?? false);
 
         $payload = [
@@ -1500,10 +1493,11 @@ class SunoService
             $payload['style'] = mb_substr($params['style'] ?? '', 0, 1000);
             $payload['title'] = mb_substr($params['title'] ?? '', 0, 100);
             if (! $instrumental) {
-                $payload['prompt'] = mb_substr($params['prompt'] ?? '', 0, 5000);
+                $payload['prompt'] = mb_substr($params['prompt'] ?: 'Vocal mashup blending both songs, keep singing and lyrics', 0, 5000);
             }
         } else {
-            $payload['prompt'] = mb_substr($params['prompt'] ?? '', 0, 3000);
+            // non-custom: prompt обязателен; пустой -> Suno склонен отдавать инструментал
+            $payload['prompt'] = mb_substr($params['prompt'] ?: 'Vocal mashup of the two songs, keep vocals and lyrics, energetic', 0, 3000);
         }
 
         $this->applyCommonOptions($payload, $params);

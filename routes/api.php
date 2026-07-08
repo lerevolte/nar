@@ -76,9 +76,12 @@ Route::middleware(['tg.auth', 'miniapp', 'maxapp'])->group(function () {
     Route::post('/promo/pay', [App\Http\Controllers\PaymentController::class, 'createPromoPayment']);
 
     // Admin broadcast API
+    Route::get('/admin/broadcast/segments', [App\Http\Controllers\BroadcastController::class, 'segments']);
     Route::post('/admin/broadcast/count-segment', [App\Http\Controllers\BroadcastController::class, 'countSegment']);
     Route::post('/admin/broadcast/create', [App\Http\Controllers\BroadcastController::class, 'create']);
+    Route::post('/admin/broadcast/test', [App\Http\Controllers\BroadcastController::class, 'test']);
     Route::get('/admin/broadcast/{id}/status', [App\Http\Controllers\BroadcastController::class, 'status']);
+    Route::post('/admin/broadcast/{id}/start', [App\Http\Controllers\BroadcastController::class, 'start']);
     Route::post('/admin/broadcast/{id}/pause', [App\Http\Controllers\BroadcastController::class, 'pause']);
 
     Route::post('/admin/promo/create', [App\Http\Controllers\PromoCodeController::class, 'create']);

@@ -60,6 +60,9 @@
                     <div class="admin-menu-wrap" data-admin="154483653">
                         <button type="button" class="btn-admin" onclick="toggleAdminMenu(event)">⚙ Админ ▾</button>
                         <div class="admin-menu" id="admin-menu">
+                            @if(in_array($authUser->user_id, [288559694, 154483653]))
+                                <a href="{{ route('admin.broadcast') }}">📢 Рассылки</a>
+                            @endif
                             <a href="{{ route('admin.articles.index') }}">📝 Статьи</a>
                             <a href="{{ route('admin.pages.index') }}">📄 Страницы (с разделами)</a>
                             <a href="{{ route('admin.static-pages.index') }}">📃 Статические страницы</a>

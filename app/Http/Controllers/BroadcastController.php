@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\RunBroadcastJob;
 use App\Models\Broadcast;
 use App\Models\WebNotification;
 use App\Services\BroadcastService;
@@ -19,7 +20,7 @@ class BroadcastController extends Controller
     }
 
     /**
-     * Страница рассылок
+     * Страница рассылок + дашборд сегментов.
      */
     public function index(Request $request)
     {
@@ -28,12 +29,31 @@ class BroadcastController extends Controller
         }
 
         $broadcasts = Broadcast::orderByDesc('created_at')->take(20)->get();
+        $segments = BroadcastService::segments();
+        $maxConfigured = (string) config('max.bot_token', '') !== '';
 
-        return view('admin.broadcast.index', compact('broadcasts'));
+        return view('admin.broadcast.index', compact('broadcasts', 'segments', 'maxConfigured'));
     }
 
     /**
-     * API: подсчёт пользователей по сегменту
+     * API: метаданные + разбивка по всем сегментам (для дашборда).
+     */
+    public function segments(Request $request, BroadcastService $service)
+    {
+        if (! $this->isAdmin($request)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $out = [];
+        foreach (BroadcastService::segments() as $key => $meta) {
+            $out[] = array_merge(['key' => $key], $meta, ['breakdown' => $service->segmentBreakdown($key)]);
+        }
+
+        return response()->json(['segments' => $out]);
+    }
+
+    /**
+     * API: подсчёт получателей по сегменту с учётом выбранных каналов.
      */
     public function countSegment(Request $request, BroadcastService $service)
     {
@@ -41,15 +61,26 @@ class BroadcastController extends Controller
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
-        $request->validate(['segment' => 'required|string|in:all,inactive_mix,paid,test']);
+        $data = $request->validate([
+            'segment' => 'required|string',
+            'channels' => 'nullable|array',
+            'channels.*' => 'in:telegram,max,web',
+        ]);
 
-        $count = $service->countBySegment($request->input('segment'));
+        if (! BroadcastService::isValidSegment($data['segment'])) {
+            return response()->json(['error' => 'Неизвестный сегмент'], 422);
+        }
 
-        return response()->json(['count' => $count]);
+        $channels = $data['channels'] ?? null;
+
+        return response()->json([
+            'count' => $service->countBySegment($data['segment'], $channels),
+            'breakdown' => $service->segmentBreakdown($data['segment']),
+        ]);
     }
 
     /**
-     * API: создать и запустить рассылку
+     * API: создать рассылку и (по умолчанию) сразу запустить через очередь.
      */
     public function create(Request $request, BroadcastService $service)
     {
@@ -57,49 +88,117 @@ class BroadcastController extends Controller
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
-        $request->validate([
-            'segment' => 'required|string|in:all,inactive_mix,paid,test',
-            'channel' => 'required|string|in:telegram,web,both',
+        $data = $request->validate([
+            'segment' => 'required|string',
+            'channels' => 'required|array|min:1',
+            'channels.*' => 'in:telegram,max,web',
             'text_content' => 'nullable|string|max:4000',
             'web_title' => 'nullable|string|max:255',
             'web_message' => 'nullable|string|max:4000',
+            'start' => 'nullable|boolean',
         ]);
+
+        if (! BroadcastService::isValidSegment($data['segment'])) {
+            return response()->json(['error' => 'Неизвестный сегмент'], 422);
+        }
+
+        $channels = $data['channels'];
+        $needsText = array_intersect($channels, ['telegram', 'max']) !== [];
+
+        if ($needsText && empty($data['text_content'])) {
+            return response()->json(['error' => 'Для Telegram/MAX нужен текст сообщения'], 422);
+        }
+        if (in_array('web', $channels, true) && empty($data['web_title']) && empty($data['web_message']) && empty($data['text_content'])) {
+            return response()->json(['error' => 'Для веб-уведомления нужен заголовок или текст'], 422);
+        }
 
         $user = $request->get('auth_user');
 
-        // Валидация: хотя бы одно из полей должно быть заполнено
-        $channel = $request->input('channel');
-        $textContent = $request->input('text_content');
-        $webTitle = $request->input('web_title');
-        $webMessage = $request->input('web_message');
-
-        if (in_array($channel, ['telegram', 'both']) && empty($textContent)) {
-            return response()->json(['error' => 'Для Telegram-рассылки нужен текст сообщения'], 400);
-        }
-
-        if (in_array($channel, ['web', 'both']) && empty($webTitle) && empty($webMessage)) {
-            return response()->json(['error' => 'Для веб-уведомления нужен заголовок или текст'], 400);
-        }
-
         $broadcast = $service->createBroadcast([
             'admin_id' => $user->user_id,
-            'segment' => $request->input('segment'),
-            'channel' => $channel,
-            'text_content' => $textContent,
-            'web_title' => $webTitle,
-            'web_message' => $webMessage ?: $textContent,
+            'segment' => $data['segment'],
+            'channels' => $channels,
+            'text_content' => $data['text_content'] ?? null,
+            'web_title' => $data['web_title'] ?? null,
+            'web_message' => $data['web_message'] ?? $data['text_content'] ?? null,
         ]);
+
+        $started = false;
+        if ($data['start'] ?? true) {
+            RunBroadcastJob::dispatch($broadcast->id);
+            $started = true;
+        }
 
         return response()->json([
             'success' => true,
             'broadcast_id' => $broadcast->id,
             'total_users' => $broadcast->total_users,
-            'message' => "Рассылка #{$broadcast->id} создана. Запусти: php artisan broadcast:run {$broadcast->id}",
+            'started' => $started,
+            'message' => $started
+                ? "Рассылка #{$broadcast->id} запущена ({$broadcast->total_users} получателей)"
+                : "Рассылка #{$broadcast->id} создана. Запусти кнопкой или: php artisan broadcast:run {$broadcast->id}",
         ]);
     }
 
     /**
-     * API: статус рассылки
+     * API: запустить существующую (pending/paused) рассылку из интерфейса.
+     */
+    public function start(Request $request, $id)
+    {
+        if (! $this->isAdmin($request)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $broadcast = Broadcast::findOrFail($id);
+
+        if ($broadcast->status === 'completed') {
+            return response()->json(['error' => 'Рассылка уже завершена'], 422);
+        }
+        if ($broadcast->status === 'running') {
+            return response()->json(['error' => 'Рассылка уже выполняется'], 422);
+        }
+
+        $broadcast->update(['status' => 'pending']);
+        RunBroadcastJob::dispatch($broadcast->id);
+
+        return response()->json(['success' => true, 'message' => "Рассылка #{$broadcast->id} запущена"]);
+    }
+
+    /**
+     * API: тестовая отправка одному пользователю по его идентификатору.
+     */
+    public function test(Request $request, BroadcastService $service)
+    {
+        if (! $this->isAdmin($request)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $data = $request->validate([
+            'user_id' => 'required|integer',
+            'channels' => 'required|array|min:1',
+            'channels.*' => 'in:telegram,max,web',
+            'text_content' => 'nullable|string|max:4000',
+            'web_title' => 'nullable|string|max:255',
+            'web_message' => 'nullable|string|max:4000',
+        ]);
+
+        $result = $service->sendTest(
+            $data['channels'],
+            $data['text_content'] ?? null,
+            $data['web_title'] ?? null,
+            $data['web_message'] ?? $data['text_content'] ?? null,
+            (int) $data['user_id'],
+        );
+
+        if (! ($result['ok'] ?? false)) {
+            return response()->json(['error' => $result['error'] ?? 'Ошибка'], 422);
+        }
+
+        return response()->json(['success' => true, 'results' => $result['results']]);
+    }
+
+    /**
+     * API: статус рассылки (для live-прогресса).
      */
     public function status(Request $request, $id)
     {
@@ -123,7 +222,7 @@ class BroadcastController extends Controller
     }
 
     /**
-     * API: поставить на паузу
+     * API: поставить на паузу.
      */
     public function pause(Request $request, $id)
     {
@@ -134,16 +233,13 @@ class BroadcastController extends Controller
         $broadcast = Broadcast::findOrFail($id);
         $broadcast->update(['status' => 'paused']);
 
-        return response()->json(['success' => true, 'message' => 'Рассылка поставлена на паузу']);
+        return response()->json(['success' => true, 'message' => 'Рассылка ставится на паузу']);
     }
 
     // ==========================================
     // WEB NOTIFICATIONS API (для всех юзеров)
     // ==========================================
 
-    /**
-     * API: получить непрочитанные уведомления
-     */
     public function getNotifications(Request $request)
     {
         $user = $request->get('auth_user');
@@ -171,9 +267,6 @@ class BroadcastController extends Controller
         ]);
     }
 
-    /**
-     * API: пометить как прочитанное
-     */
     public function markRead(Request $request)
     {
         $user = $request->get('auth_user');

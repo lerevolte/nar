@@ -72,7 +72,7 @@
                     <a href="{{ route('dashboard') }}" class="btn-blue">Личный кабинет</a>
                 @else
                     <a href="{{ route('login') }}" class="login-btn green-btn">Вход</a>
-                    <a href="{{ route('register') }}" class="btn-blue hidden md:inline">Регистрация</a>
+                    <a href="{{ route('register') }}" class="btn-blue hidden md:inline-flex">Регистрация</a>
                 @endif
             </div>
         </div>

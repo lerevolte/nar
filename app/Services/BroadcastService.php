@@ -31,104 +31,138 @@ class BroadcastService
 
     /**
      * Метаданные сегментов для UI и валидации.
-     * stuck=true — «зависшие», показываются карточками на дашборде.
+     *  - partition=true — входит в строгое непересекающееся разбиение (карточки дашборда).
+     *    Каждый активный пользователь попадает ровно в один partition-сегмент.
+     *  - partition=false — «широкие» пересекающиеся сегменты (all/paid) для массовых анонсов.
+     *  - template — готовый HTML-шаблон письма. [ПРОМОКОД] замени на свой код.
      */
     public static function segments(): array
     {
         return [
             'no_create' => [
-                'emoji' => '🫥', 'label' => 'Подписался — ничего не создал', 'stuck' => true,
-                'desc' => 'Есть в базе, но нет ни черновика, ни песни.',
-                'action' => 'Онбординг: покажи, как создать первую песню за 1 минуту. Дай ссылку/кнопку «Создать песню».',
+                'emoji' => '🫥', 'label' => 'Подписался — ничего не создал', 'partition' => true, 'sendable' => true,
+                'desc' => 'Нет оплаты, нет черновика, нет песни. Не сделал ни одного шага.',
+                'action' => 'Онбординг: покажи, как создать первую песню за 1 минуту. Один чёткий CTA «Создать песню», без скидок (рано).',
+                'template' => "Привет! 👋\n\nТы уже с нами, но ещё <b>не создал ни одной песни</b> 🎵\n\nЭто занимает всего <b>1 минуту</b>: выбираешь повод и стиль — а нейросеть пишет текст и музыку за тебя.\n\n👉 Открой бота и нажми «🎵 Создать песню» — попробуй бесплатно!",
             ],
             'draft' => [
-                'emoji' => '📝', 'label' => 'Черновик без готовой песни', 'stuck' => true,
-                'desc' => 'Начал создавать (есть draft), но не довёл до генерации.',
-                'action' => 'Напоминание «допиши свою песню» + мягкий стимул закончить.',
+                'emoji' => '📝', 'label' => 'Черновик без готовой песни', 'partition' => true, 'sendable' => true,
+                'desc' => 'Нет оплаты, есть черновик, но нет готовой песни. Застрял в процессе.',
+                'action' => 'Напоминание «допиши свою песню» — он уже вложился, дожать до генерации. Скидка не нужна, нужен толчок.',
+                'template' => "У тебя остался <b>незаконченный черновик</b> 📝\n\nТы уже начал создавать песню — осталось совсем чуть-чуть, чтобы получить готовый трек 🎶\n\n👉 Вернись в бот и заверши — это займёт минуту.",
             ],
             'no_pay' => [
-                'emoji' => '🎧', 'label' => 'Есть песня, но не оплатил', 'stuck' => true,
-                'desc' => 'Сгенерировал текст/демо, но нет успешной оплаты.',
-                'action' => 'Оффер со скидкой/промокодом, чтобы забрать полную версию.',
+                'emoji' => '🎧', 'label' => 'Есть песня, но не оплатил', 'partition' => true, 'sendable' => true,
+                'desc' => 'Нет успешной оплаты, но есть сгенерированная песня. Самый горячий сегмент для конверсии.',
+                'action' => 'Оффер со скидкой/промокодом, чтобы забрать полную версию. Здесь промокод работает лучше всего.',
+                'template' => "Твоя песня почти готова! 🎧\n\nОсталось забрать полную версию в хорошем качестве. Держи <b>скидку по промокоду</b>:\n\n🎁 <b>[ПРОМОКОД]</b>\n\n👉 Введи его в боте при оплате — предложение ограничено!",
             ],
             'churn' => [
-                'emoji' => '💔', 'label' => 'Оплачивал, но пропал (отток)', 'stuck' => true,
-                'desc' => 'Была успешная оплата, но неактивен более '.self::CHURN_DAYS.' дней.',
-                'action' => 'Реактивация: новинки, повод вернуться, бонус на следующую песню.',
+                'emoji' => '💔', 'label' => 'Оплачивал, но пропал (отток)', 'partition' => true, 'sendable' => true,
+                'desc' => 'Есть успешная оплата, но неактивен более '.self::CHURN_DAYS.' дней. Ценные ушедшие клиенты.',
+                'action' => 'Реактивация: новинки + бонус на следующую песню. Они уже платили — верни их выгодным поводом.',
+                'template' => "Мы скучаем! 💔\n\nУ нас появились новые стили и функции — самое время вернуться и создать новый хит 🔥\n\nДарим бонус на следующую песню:\n🎁 <b>[ПРОМОКОД]</b>\n\n👉 Возвращайся в бот!",
             ],
-            'sleep' => [
-                'emoji' => '💤', 'label' => 'Спящие ('.self::SLEEP_DAYS.'+ дней)', 'stuck' => true,
-                'desc' => 'Не заходили более '.self::SLEEP_DAYS.' дней (любой стадии).',
-                'action' => 'Широкая реактивационная рассылка с новостями/акцией.',
+            'paid_active' => [
+                'emoji' => '💚', 'label' => 'Оплатившие и активные', 'partition' => true, 'sendable' => true,
+                'desc' => 'Есть успешная оплата и активность за последние '.self::CHURN_DAYS.' дней. Лояльное ядро.',
+                'action' => 'Апселл, новые форматы, реферальная программа («приведи друга — получи песню»). Скидки не нужны.',
+                'template' => "Спасибо, что ты с нами! 🎉\n\n<b>[Здесь расскажи о новинке / акции / реферальной программе]</b>\n\nНапример: приведи друга по своей ссылке и получи бонусную песню 🎁",
             ],
             'blocked' => [
-                'emoji' => '🚫', 'label' => 'Заблокировали бота', 'stuck' => true,
+                'emoji' => '🚫', 'label' => 'Заблокировали бота', 'partition' => true, 'sendable' => false,
                 'desc' => 'is_blocked = 1. Доставка в мессенджер невозможна.',
-                'action' => 'Слать нельзя. Показано для контроля оттока.',
+                'action' => 'Слать нельзя. Показано только для контроля оттока.',
+                'template' => null,
             ],
             'paid' => [
-                'emoji' => '💰', 'label' => 'Все оплатившие', 'stuck' => false,
-                'desc' => 'Хотя бы одна успешная оплата.',
-                'action' => 'Апселл, новые форматы, реферальная программа.',
+                'emoji' => '💰', 'label' => 'Все оплатившие (широкий)', 'partition' => false, 'sendable' => true,
+                'desc' => 'Хотя бы одна успешная оплата. Пересекается с churn + paid_active.',
+                'action' => 'Массовые апселл-анонсы для всех клиентов.',
+                'template' => null,
             ],
             'all' => [
-                'emoji' => '🌍', 'label' => 'Все активные', 'stuck' => false,
-                'desc' => 'Все незаблокированные пользователи.',
-                'action' => 'Массовые анонсы.',
+                'emoji' => '🌍', 'label' => 'Все активные (широкий)', 'partition' => false, 'sendable' => true,
+                'desc' => 'Все незаблокированные. Пересекается со всеми сегментами.',
+                'action' => 'Глобальные анонсы для всей базы.',
+                'template' => null,
             ],
         ];
     }
 
     public static function isValidSegment(string $segment): bool
     {
-        return array_key_exists($segment, self::segments()) || $segment === 'inactive_mix' || $segment === 'test';
+        $base = str_ends_with($segment, ':inactive') ? substr($segment, 0, -strlen(':inactive')) : $segment;
+
+        return array_key_exists($base, self::segments()) || in_array($base, ['sleep', 'inactive_mix', 'test'], true);
     }
 
     /**
-     * Базовый query пользователей по сегменту (таблица users).
+     * Query по сегменту с учётом суффикса ":inactive" (только неактивные 14д+).
+     * Через этот метод ходят все подсчёты и рассылка.
+     */
+    public function segmentQuery(string $segmentRaw): Builder
+    {
+        $onlyInactive = str_ends_with($segmentRaw, ':inactive');
+        $key = $onlyInactive ? substr($segmentRaw, 0, -strlen(':inactive')) : $segmentRaw;
+
+        $query = $this->getUsersBySegment($key);
+
+        if ($onlyInactive) {
+            $query->where('last_activity', '<', now()->subDays(self::SLEEP_DAYS));
+        }
+
+        return $query;
+    }
+
+    /**
+     * Базовый query пользователей по сегменту (строгое непересекающееся разбиение).
+     *   P=есть успешная оплата, S=есть песня, D=есть черновик, I=неактивен CHURN_DAYS+
+     *   no_create=¬P∧¬S∧¬D · draft=¬P∧¬S∧D · no_pay=¬P∧S · churn=P∧I · paid_active=P∧¬I
      */
     public function getUsersBySegment(string $segment): Builder
     {
+        $paidExists = fn ($q) => $q->from('payments')
+            ->whereColumn('payments.user_id', 'users.user_id')
+            ->where('payments.status', 'succeeded');
+        $songExists = fn ($q) => $q->from('songs')->whereColumn('songs.user_id', 'users.user_id');
+        $draftExists = fn ($q) => $q->from('drafts')->whereColumn('drafts.user_id', 'users.user_id');
+        $churnCutoff = now()->subDays(self::CHURN_DAYS);
+
         switch ($segment) {
-            case 'no_create':
-                return DB::table('users')
-                    ->where('is_blocked', 0)
-                    ->whereNotExists(fn ($q) => $q->from('drafts')->whereColumn('drafts.user_id', 'users.user_id'))
-                    ->whereNotExists(fn ($q) => $q->from('songs')->whereColumn('songs.user_id', 'users.user_id'));
+            case 'no_create': // ¬P ∧ ¬S ∧ ¬D
+                return DB::table('users')->where('is_blocked', 0)
+                    ->whereNotExists($paidExists)
+                    ->whereNotExists($songExists)
+                    ->whereNotExists($draftExists);
 
-            case 'draft':
-                return DB::table('users')
-                    ->where('is_blocked', 0)
-                    ->whereExists(fn ($q) => $q->from('drafts')->whereColumn('drafts.user_id', 'users.user_id'))
-                    ->whereNotExists(fn ($q) => $q->from('songs')->whereColumn('songs.user_id', 'users.user_id'));
+            case 'draft': // ¬P ∧ ¬S ∧ D
+                return DB::table('users')->where('is_blocked', 0)
+                    ->whereNotExists($paidExists)
+                    ->whereNotExists($songExists)
+                    ->whereExists($draftExists);
 
-            case 'no_pay':
-                return DB::table('users')
-                    ->where('is_blocked', 0)
-                    ->whereExists(fn ($q) => $q->from('songs')->whereColumn('songs.user_id', 'users.user_id'))
-                    ->whereNotExists(fn ($q) => $q->from('payments')
-                        ->whereColumn('payments.user_id', 'users.user_id')
-                        ->where('payments.status', 'succeeded'));
+            case 'no_pay': // ¬P ∧ S
+                return DB::table('users')->where('is_blocked', 0)
+                    ->whereNotExists($paidExists)
+                    ->whereExists($songExists);
 
-            case 'churn':
-                return DB::table('users')
-                    ->where('is_blocked', 0)
-                    ->where('last_activity', '<', now()->subDays(self::CHURN_DAYS))
-                    ->whereExists(fn ($q) => $q->from('payments')
-                        ->whereColumn('payments.user_id', 'users.user_id')
-                        ->where('payments.status', 'succeeded'));
+            case 'churn': // P ∧ I (неактивен)
+                return DB::table('users')->where('is_blocked', 0)
+                    ->whereExists($paidExists)
+                    ->where('last_activity', '<', $churnCutoff);
 
-            case 'sleep':
-                return DB::table('users')
-                    ->where('is_blocked', 0)
+            case 'paid_active': // P ∧ ¬I (активен либо last_activity пуст)
+                return DB::table('users')->where('is_blocked', 0)
+                    ->whereExists($paidExists)
+                    ->where(fn ($w) => $w->where('last_activity', '>=', $churnCutoff)->orWhereNull('last_activity'));
+
+            case 'paid': // широкий: все оплатившие (пересекается)
+                return DB::table('users')->where('is_blocked', 0)->whereExists($paidExists);
+
+            case 'sleep': // legacy: неактивные любой стадии
+                return DB::table('users')->where('is_blocked', 0)
                     ->where('last_activity', '<', now()->subDays(self::SLEEP_DAYS));
-
-            case 'paid':
-                return DB::table('users')
-                    ->where('is_blocked', 0)
-                    ->whereExists(fn ($q) => $q->from('payments')
-                        ->whereColumn('payments.user_id', 'users.user_id')
-                        ->where('payments.status', 'succeeded'));
 
             case 'blocked':
                 return DB::table('users')->where('is_blocked', 1);
@@ -192,7 +226,7 @@ class BroadcastService
      */
     public function countBySegment(string $segment, ?array $channels = null): int
     {
-        $q = $this->getUsersBySegment($segment);
+        $q = $this->segmentQuery($segment);
         if ($channels !== null && $channels !== []) {
             $this->applyChannelFilter($q, $channels);
         }
@@ -206,14 +240,15 @@ class BroadcastService
     public function segmentBreakdown(string $segment): array
     {
         $off = self::MAX_USER_ID_OFFSET;
-        $base = $this->getUsersBySegment($segment);
+        $base = $this->segmentQuery($segment);
 
         $total = (clone $base)->count();
         $tg = (clone $base)->where('user_id', '<', $off)->count();
         $maxAll = (clone $base)->where('user_id', '>=', $off)->count();
         $maxReach = (clone $base)->where('user_id', '>=', $off)->whereNotNull('chat_id')->count();
+        $inactive = (clone $base)->where('last_activity', '<', now()->subDays(self::SLEEP_DAYS))->count();
 
-        return ['total' => $total, 'tg' => $tg, 'max' => $maxAll, 'max_reachable' => $maxReach];
+        return ['total' => $total, 'tg' => $tg, 'max' => $maxAll, 'max_reachable' => $maxReach, 'inactive' => $inactive];
     }
 
     /**
@@ -275,7 +310,7 @@ class BroadcastService
         $batchSize = 200;
 
         while (true) {
-            $rows = $this->applyChannelFilter($this->getUsersBySegment($segment), $channels)
+            $rows = $this->applyChannelFilter($this->segmentQuery($segment), $channels)
                 ->where('user_id', '>', $last)
                 ->orderBy('user_id')
                 ->limit($batchSize)

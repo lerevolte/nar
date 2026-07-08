@@ -75,7 +75,11 @@
 <p style="color: var(--text-tertiary); font-size: 13px; margin-bottom: 20px;">Сегменты «зависших», рассылки по Telegram / MAX / сайту, тест на одном пользователе.</p>
 
 {{-- ДАШБОРД СЕГМЕНТОВ --}}
-<h3 style="font-size: 16px; font-weight: 700; margin-bottom: 10px;">🔍 Сегменты пользователей</h3>
+<h3 style="font-size: 16px; font-weight: 700; margin-bottom: 4px;">🔍 Сегменты пользователей</h3>
+<p style="color: var(--text-tertiary); font-size: 12px; margin-bottom: 12px;">
+    Непересекающиеся: каждый пользователь ровно в одном сегменте — рассылки по ним не дублируют получателей.
+    «Спящих» внутри любого сегмента можно взять галочкой «только неактивные».
+</p>
 <div class="seg-grid" id="seg-grid">
     <div style="color: var(--text-tertiary); padding: 10px;">Загрузка сегментов…</div>
 </div>
@@ -101,10 +105,25 @@
     <div class="form-group">
         <label class="form-label">Аудитория</label>
         <select class="segment-select" id="segment-select" onchange="countSegment()">
-            @foreach($segments as $key => $meta)
-                <option value="{{ $key }}">{{ $meta['emoji'] }} {{ $meta['label'] }}</option>
-            @endforeach
+            <optgroup label="Непересекающиеся сегменты (без дублей)">
+                @foreach($segments as $key => $meta)
+                    @if(($meta['partition'] ?? false) && ($meta['sendable'] ?? true))
+                        <option value="{{ $key }}">{{ $meta['emoji'] }} {{ $meta['label'] }}</option>
+                    @endif
+                @endforeach
+            </optgroup>
+            <optgroup label="Широкие (пересекаются с другими)">
+                @foreach($segments as $key => $meta)
+                    @if(! ($meta['partition'] ?? false) && ($meta['sendable'] ?? true))
+                        <option value="{{ $key }}">{{ $meta['emoji'] }} {{ $meta['label'] }}</option>
+                    @endif
+                @endforeach
+            </optgroup>
         </select>
+        <label style="display:flex; gap:8px; align-items:center; margin-top:8px; font-size:13px; cursor:pointer;">
+            <input type="checkbox" id="only-inactive" onchange="countSegment()">
+            🕒 Только неактивные {{ \App\Services\BroadcastService::SLEEP_DAYS }}+ дней
+        </label>
         <div class="segment-count" id="segment-count">…</div>
     </div>
 
@@ -185,6 +204,8 @@
 <script>
     const CSRF = '{{ csrf_token() }}';
     const MAX_OK = @json($maxConfigured);
+    const SEG_META = {};
+    function onlyInactive() { return document.getElementById('only-inactive')?.checked || false; }
 
     // ---------- Каналы ----------
     function selectedChannels() {
@@ -246,7 +267,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
                 credentials: 'same-origin',
-                body: JSON.stringify({ segment: seg, channels: selectedChannels() }),
+                body: JSON.stringify({ segment: seg, channels: selectedChannels(), only_inactive: onlyInactive() }),
             });
             const d = await r.json();
             if (!r.ok) throw new Error(d.error || 'Ошибка');
@@ -261,15 +282,21 @@
             const r = await fetch('/api/admin/broadcast/segments', { credentials: 'same-origin' });
             const d = await r.json();
             const grid = document.getElementById('seg-grid');
-            grid.innerHTML = d.segments.filter(s => s.stuck).map(s => {
+            d.segments.forEach(s => SEG_META[s.key] = s);
+            grid.innerHTML = d.segments.filter(s => s.partition).map(s => {
                 const b = s.breakdown;
-                return `<div class="seg-card ${s.key==='blocked'?'blocked':''}">
+                const sendable = s.sendable !== false;
+                const buttons = sendable ? `<div style="display:flex; gap:6px;">
+                        <button class="btn-seg" onclick="pickSegment('${s.key}')">✍️ Рассылка</button>
+                        ${s.template ? `<button class="btn-seg" onclick="useTemplate('${s.key}')">📋 Шаблон</button>` : ''}
+                    </div>` : '';
+                return `<div class="seg-card ${sendable ? '' : 'blocked'}">
                     <div class="seg-head">${s.emoji} ${s.label}</div>
                     <div class="seg-count">${b.total}</div>
-                    <div class="seg-split">TG ${b.tg} · MAX ${b.max_reachable}/${b.max}</div>
+                    <div class="seg-split">TG ${b.tg} · MAX ${b.max_reachable}/${b.max} · 💤 неактивных ${b.inactive}</div>
                     <div class="seg-desc">${s.desc}</div>
                     <div class="seg-action"><b>Что делать:</b> ${s.action}</div>
-                    ${s.key==='blocked' ? '' : `<button class="btn-seg" onclick="pickSegment('${s.key}')">✍️ Создать рассылку</button>`}
+                    ${buttons}
                 </div>`;
             }).join('');
         } catch (e) {
@@ -280,6 +307,24 @@
         document.getElementById('segment-select').value = key;
         countSegment();
         document.getElementById('composer').scrollIntoView({ behavior: 'smooth' });
+    }
+    function useTemplate(key) {
+        const m = SEG_META[key];
+        if (!m) return;
+        pickSegment(key);
+        // Каналы под шаблон не трогаем — оставляем выбор админа
+        if (m.template) {
+            const ta = document.getElementById('tg-text');
+            if (!ta.value.trim() || confirm('Заменить текущий текст шаблоном?')) {
+                ta.value = m.template;
+                renderPreview();
+                const wt = document.getElementById('web-title');
+                if (wt && !wt.value) wt.value = m.label;
+                if (m.template.includes('[ПРОМОКОД]')) {
+                    alert('В шаблоне есть [ПРОМОКОД] — замени на свой созданный промокод.');
+                }
+            }
+        }
     }
 
     // ---------- Тест ----------
@@ -327,6 +372,7 @@
                 body: JSON.stringify({
                     segment: document.getElementById('segment-select').value,
                     channels: ch,
+                    only_inactive: onlyInactive(),
                     text_content: document.getElementById('tg-text').value || null,
                     web_title: document.getElementById('web-title')?.value || null,
                     web_message: document.getElementById('web-message')?.value || null,

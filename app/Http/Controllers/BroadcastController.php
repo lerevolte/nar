@@ -65,17 +65,19 @@ class BroadcastController extends Controller
             'segment' => 'required|string',
             'channels' => 'nullable|array',
             'channels.*' => 'in:telegram,max,web',
+            'only_inactive' => 'nullable|boolean',
         ]);
 
         if (! BroadcastService::isValidSegment($data['segment'])) {
             return response()->json(['error' => 'Неизвестный сегмент'], 422);
         }
 
+        $segment = $data['segment'].(($data['only_inactive'] ?? false) ? ':inactive' : '');
         $channels = $data['channels'] ?? null;
 
         return response()->json([
-            'count' => $service->countBySegment($data['segment'], $channels),
-            'breakdown' => $service->segmentBreakdown($data['segment']),
+            'count' => $service->countBySegment($segment, $channels),
+            'breakdown' => $service->segmentBreakdown($segment),
         ]);
     }
 
@@ -95,6 +97,7 @@ class BroadcastController extends Controller
             'text_content' => 'nullable|string|max:4000',
             'web_title' => 'nullable|string|max:255',
             'web_message' => 'nullable|string|max:4000',
+            'only_inactive' => 'nullable|boolean',
             'start' => 'nullable|boolean',
         ]);
 
@@ -102,6 +105,7 @@ class BroadcastController extends Controller
             return response()->json(['error' => 'Неизвестный сегмент'], 422);
         }
 
+        $segment = $data['segment'].(($data['only_inactive'] ?? false) ? ':inactive' : '');
         $channels = $data['channels'];
         $needsText = array_intersect($channels, ['telegram', 'max']) !== [];
 
@@ -116,7 +120,7 @@ class BroadcastController extends Controller
 
         $broadcast = $service->createBroadcast([
             'admin_id' => $user->user_id,
-            'segment' => $data['segment'],
+            'segment' => $segment,
             'channels' => $channels,
             'text_content' => $data['text_content'] ?? null,
             'web_title' => $data['web_title'] ?? null,

@@ -35,7 +35,7 @@ class LandingController extends Controller
             ->having('total_votes', '>', 0)
             ->orderByDesc('total_votes')
             ->orderBy('first_added')
-            ->take(10)
+            ->take(20)
             ->get();
 
         $topTracks = $entries->map(function ($entry, $index) {

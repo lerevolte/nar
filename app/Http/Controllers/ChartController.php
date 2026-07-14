@@ -48,15 +48,15 @@ class ChartController extends Controller
             ->first();
 
         // Получаем песни пользователя для добавления
+        // (исключаем песни, которые уже участвовали в любом чарте)
         $userSongs = collect();
         if (! $userEntry) {
             $userSongs = Song::where('user_id', $user->user_id)
                 ->notDeleted()
                 ->whereNotNull('file_path')
-                ->whereNotIn('id', function ($query) use ($chart) {
+                ->whereNotIn('id', function ($query) {
                     $query->select('song_id')
-                        ->from('chart_entries')
-                        ->where('chart_id', $chart->id);
+                        ->from('chart_entries');
                 })
                 ->get();
         }
@@ -124,6 +124,11 @@ class ChartController extends Controller
             return response()->json(['error' => 'Эта песня уже участвует в чарте'], 400);
         }
 
+        // Песню, которая уже участвовала в другом чарте, добавить нельзя
+        if ($chartService->songUsedInAnotherChart($songId, $chart->id)) {
+            return response()->json(['error' => 'Эта песня уже участвовала в другом чарте. Выберите другую песню'], 400);
+        }
+
         // Добавляем
         $entry = ChartEntry::create([
             'chart_id' => $chart->id,
@@ -169,9 +174,14 @@ class ChartController extends Controller
             return response()->json(['error' => 'Нельзя голосовать за свои песни'], 400);
         }
 
-        // Проверяем что ещё не голосовал за эту песню
-        $existingVote = ChartVote::where('chart_entry_id', $entryId)
-            ->where('user_id', $user->user_id)
+        // Проверяем, голосовал ли уже за любой entry этой песни:
+        // одна песня может участвовать сразу в нескольких активных чартах
+        $existingVote = ChartVote::where('user_id', $user->user_id)
+            ->whereIn('chart_entry_id', function ($query) use ($entry) {
+                $query->select('id')
+                    ->from('chart_entries')
+                    ->where('song_id', $entry->song_id);
+            })
             ->first();
 
         if ($existingVote) {
@@ -627,14 +637,14 @@ class ChartController extends Controller
             ->first();
 
         // Песни пользователя для добавления
+        // (исключаем песни, которые уже участвовали в любом чарте)
         $userSongs = collect();
         if (! $userEntry) {
             $userSongs = Song::where('user_id', $user->user_id)
                 ->whereNotNull('file_path')
-                ->whereNotIn('id', function ($query) use ($chart) {
+                ->whereNotIn('id', function ($query) {
                     $query->select('song_id')
-                        ->from('chart_entries')
-                        ->where('chart_id', $chart->id);
+                        ->from('chart_entries');
                 })
                 ->get();
         }
@@ -730,6 +740,11 @@ class ChartController extends Controller
 
         if ($existingSong) {
             return response()->json(['error' => 'Эта песня уже участвует в чарте'], 400);
+        }
+
+        // Песню, которая уже участвовала в другом чарте, добавить нельзя
+        if ($chartService->songUsedInAnotherChart($songId, $chart->id)) {
+            return response()->json(['error' => 'Эта песня уже участвовала в другом чарте. Выберите другую песню'], 400);
         }
 
         // Добавляем

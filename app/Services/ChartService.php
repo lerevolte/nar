@@ -395,6 +395,17 @@ class ChartService
     }
 
     /**
+     * Проверить, участвовала ли песня уже в другом чарте.
+     * Одну песню можно добавить только в один чарт.
+     */
+    public function songUsedInAnotherChart(int $songId, int $chartId): bool
+    {
+        return ChartEntry::where('song_id', $songId)
+            ->where('chart_id', '!=', $chartId)
+            ->exists();
+    }
+
+    /**
      * Проверка защиты голосования от накрутки.
      * Возвращает текст ошибки, если голосовать нельзя, либо null — если можно.
      *

@@ -107,8 +107,9 @@ class ChartService
                 'author' => $reward->user->first_name ?? $reward->user->username ?? 'Автор',
                 'votes' => (int) $entry->votes_count,
                 'plays' => $song->plays_count ?? 0,
-                'audio_url' => $song->file_path,
-                'cover_url' => $song->cover_url,
+                // старый домен narepite.site отдаёт 301 — переписываем на основной
+                'audio_url' => str_replace('://narepite.site/', '://narepite.com/', (string) $song->file_path),
+                'cover_url' => str_replace('://narepite.site/', '://narepite.com/', (string) $song->cover_url),
                 'genre' => $song->genre,
                 'occasion' => $song->occasion,
                 'lyrics' => $song->lyrics,

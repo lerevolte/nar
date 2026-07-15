@@ -47,6 +47,28 @@ class LandingController extends Controller
     }
 
     /**
+     * Новая главная (тестовый URL /new-home, после проверки переедет на /)
+     */
+    public function indexNew(Request $request, ChartService $chartService)
+    {
+        $authUser = null;
+        $token = $request->cookie('tg_session');
+        if ($token) {
+            $authService = app(TelegramAuthService::class);
+            $authUser = $authService->getUserBySessionToken($token);
+        }
+
+        $topTracks = $chartService->getShowcaseTracks(9);
+
+        $songsTotal = cache()->remember('landing_songs_total', 3600, fn () => Song::count());
+
+        // Пока страница на тестовом URL — закрываем от индексации
+        $noindex = ! $request->routeIs('home');
+
+        return view('landing2', compact('authUser', 'topTracks', 'songsTotal', 'noindex'));
+    }
+
+    /**
      * API: Увеличить счётчик прослушиваний
      */
     public function incrementPlay(Request $request)

@@ -1160,6 +1160,244 @@ body{background:#FFFFFF}
 .ftr-about{color:rgba(255,255,255,.6)}
 .ftr-bot{color:rgba(255,255,255,.5);border-top-color:rgba(255,255,255,.1)}
 </style>
+<style>
+/* ============================================================
+   MOBILE DRAWER + FULL RESPONSIVE
+   ============================================================ */
+
+/* --- burger button --- */
+.mob-burger{
+  display:none;flex-direction:column;justify-content:center;gap:5px;
+  width:44px;height:44px;background:transparent;border:none;cursor:pointer;padding:10px;
+  border-radius:10px;flex:0 0 auto;margin-right:4px;
+}
+.mob-burger span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;transition:.2s}
+.mob-burger:hover span{background:rgba(255,255,255,.75)}
+
+/* --- overlay --- */
+.mob-overlay{
+  display:none;position:fixed;inset:0;z-index:100;
+  background:rgba(8,6,18,.55);backdrop-filter:blur(4px);opacity:0;transition:opacity .28s;
+}
+.mob-overlay.is-open{opacity:1}
+
+/* --- drawer --- */
+.mob-drawer{
+  position:fixed;top:0;right:0;bottom:0;z-index:101;
+  width:min(82vw,320px);
+  background:linear-gradient(175deg,#0E1330 0%,#1A1640 55%,#2A1840 100%);
+  transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;padding:24px 0 40px;
+  box-shadow:-8px 0 40px rgba(0,0,0,.5);
+}
+.mob-drawer.is-open{transform:translateX(0)}
+.mob-overlay,.mob-drawer{pointer-events:none}
+.mob-overlay.is-open,.mob-drawer.is-open{pointer-events:auto}
+
+/* close button */
+.mob-close{
+  align-self:flex-end;margin-right:20px;margin-bottom:20px;
+  width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.14);display:grid;place-items:center;cursor:pointer;
+  color:#fff;transition:.18s;flex:0 0 auto;
+}
+.mob-close:hover{background:rgba(255,255,255,.16)}
+.mob-close svg{width:18px;height:18px}
+
+/* nav list */
+.mob-nav{list-style:none;padding:0;margin:0;overflow-y:auto;}
+.mob-nav li{border-bottom:1px solid rgba(255,255,255,.1)}
+.mob-nav li:first-child{border-top:1px solid rgba(255,255,255,.1)}
+.mob-nav a{
+  display:block;padding:20px 28px;
+  font-family:'Onest','Golos Text',system-ui,sans-serif;
+  font-size:20px;font-weight:400;color:#fff;letter-spacing:-.01em;
+  transition:background .16s,padding-left .16s;
+}
+.mob-nav a:hover{background:rgba(255,255,255,.07);padding-left:36px}
+
+/* show burger at mobile */
+@media (max-width:1080px){
+  .mob-burger{display:flex}
+}
+
+/* ============================================================
+   FULL MOBILE LAYOUT (≤ 767px)
+   ============================================================ */
+@media (max-width:767px){
+
+  /* layout */
+  .wrap{padding:0 18px}
+  .section{padding:56px 0}
+  .section--tight{padding:40px 0}
+  .sec-head{margin-bottom:32px}
+
+  /* type */
+  .h-sec{font-size:30px;max-width:none}
+  .sub-sec{font-size:16px}
+  .hero h1{font-size:30px;letter-spacing:-.02em}
+  .hero-sub{font-size:16px;margin-top:16px}
+
+  /* header */
+  .hdr-in{height:62px;gap:10px}
+  .hdr-cta{display:none}
+  .nav{display:none}
+  .logo-img{height:28px}
+
+  /* hero */
+  .hero{padding:36px 0 48px}
+  .hero-grid{grid-template-columns:1fr;gap:32px}
+  .hero-copy{max-width:none}
+  .hero-cta{flex-direction:column;gap:10px}
+  .hero-cta .btn{width:100%;justify-content:center}
+  .trust{font-size:12.5px;gap:7px}
+  .hero-art{max-width:340px;margin:0 auto}
+  .float-chip{display:none}
+
+  /* marquee */
+  .mq{width:120px}
+  .mq-cover{width:120px;height:120px}
+  .marquee-sec{padding:16px 0 0}
+
+  /* УТП */
+  .utp-grid{grid-template-columns:1fr;gap:14px}
+  .utp{padding:22px 20px 24px}
+  .utp h3{font-size:18px}
+
+  /* 3 шага */
+  .steps{grid-template-columns:1fr;gap:0}
+  .step{padding:24px 22px 26px;border-radius:0}
+  .step:first-child{border-radius:var(--r-lg) var(--r-lg) 0 0}
+  .step:last-child{border-radius:0 0 var(--r-lg) var(--r-lg)}
+  .step+.step{border-top:1px solid var(--border)}
+  .step-arrow{display:none}
+  .steps-cta{flex-direction:column;align-items:center;gap:14px;text-align:center}
+  .steps-cta .btn{width:100%}
+
+  /* треки */
+  .track-grid{grid-template-columns:1fr;gap:18px}
+  .track-title{font-size:16px}
+
+  /* повод */
+  .povod-grid{grid-template-columns:1fr 1fr;gap:12px}
+  .povod{padding:14px 14px;gap:10px}
+  .povod span:not(.pv-ic):not(.arr){font-size:13.5px}
+  .pv-ic{width:36px;height:36px}
+  .pv-ic svg{width:18px;height:18px}
+
+  /* адресаты */
+  .addressees{gap:8px}
+  .chip{padding:8px 14px;font-size:14px}
+
+  /* жанры */
+  .chip-cloud{gap:8px}
+
+  /* где использовать */
+  .use-grid{grid-template-columns:1fr;gap:14px}
+  .use{padding:22px 20px 24px}
+
+  /* отзывы + метрики */
+  .metrics{grid-template-columns:1fr;gap:14px}
+  .metric .num{font-size:40px}
+  .rev-grid{grid-template-columns:1fr;gap:14px}
+
+  /* тарифы */
+  .plans{grid-template-columns:1fr;max-width:none}
+  .plan{padding:28px 24px}
+  .plan .price{font-size:32px}
+
+  /* FAQ */
+  .faq-q h3{font-size:16px}
+  .faq-a{padding:0 18px 22px 60px;font-size:15px}
+
+  /* финальный CTA */
+  .final{padding:56px 24px;border-radius:var(--r-lg)}
+  .final h2{font-size:30px}
+  .final p{font-size:16px}
+  .final .btn{width:100%}
+
+  /* SEO */
+  .seo h2{font-size:22px}
+  .seo p{font-size:15px}
+
+  /* footer */
+  .ftr-grid{grid-template-columns:1fr;gap:28px}
+  .ftr-bot{flex-direction:column;gap:8px;font-size:13px}
+}
+
+/* ============================================================
+   TABLET (768 – 1079px)
+   ============================================================ */
+@media (min-width:768px) and (max-width:1079px){
+  .wrap{padding:0 24px}
+  .section{padding:72px 0}
+  .h-sec{font-size:38px}
+  .hero h1{font-size:44px}
+  .hero-grid{grid-template-columns:1fr;gap:40px}
+  .hero-cta{flex-wrap:wrap}
+  .hero-art{max-width:420px;margin:0 auto}
+  .float-chip{display:none}
+  .utp-grid{grid-template-columns:repeat(2,1fr)}
+  .track-grid{grid-template-columns:repeat(2,1fr)}
+  .steps{grid-template-columns:1fr}
+  .step-arrow{display:none}
+  .povod-grid{grid-template-columns:repeat(2,1fr)}
+  .use-grid{grid-template-columns:repeat(2,1fr)}
+  .plans{grid-template-columns:1fr;max-width:480px}
+  .ftr-grid{grid-template-columns:1fr 1fr}
+  .rev-grid{grid-template-columns:1fr}
+}
+</style>
+<style>
+/* ============================================================
+   ТАРИФЫ: 3 в ряд на десктопе, слайдер с точками на мобиле
+   ============================================================ */
+.plans--3{grid-template-columns:repeat(3,1fr);max-width:1120px}
+.plans-dots{display:none}
+@media (min-width:768px) and (max-width:1079px){
+  .plans--3{grid-template-columns:1fr;max-width:480px}
+}
+@media (max-width:767px){
+  .plans.plans--3{
+    display:flex !important;grid-template-columns:none;max-width:none;
+    overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;
+    padding:4px 2px 8px;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .plans.plans--3::-webkit-scrollbar{display:none}
+  .plans.plans--3 .plan{
+    flex:0 0 100%;width:100%;min-width:100%;
+    scroll-snap-align:center;scroll-snap-stop:always;
+  }
+  .plans-dots{display:flex;justify-content:center;gap:9px;margin-top:18px}
+  .plans-dots i{width:8px;height:8px;border-radius:50%;background:var(--border-hi);transition:.2s}
+  .plans-dots i.on{background:var(--violet);transform:scale(1.3)}
+}
+
+/* Ховер акцентных чипов: не перекрашивать текст в белый на светлом фоне */
+.chip--accent:hover{color:var(--text);background:var(--grad-soft);border-color:rgba(180,92,255,.6)}
+
+/* Оверлей мобильного меню: в макете display:none никогда не снимался —
+   затемнение не показывалось и клик мимо меню не закрывал его */
+.mob-overlay{display:block}
+
+/* ============================================================
+   Кнопка play на обложках ленты (как на старой главной)
+   ============================================================ */
+.mq-play{
+  position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);
+  width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(10,8,20,.55);border:1px solid rgba(255,255,255,.4);color:#fff;
+  cursor:pointer;z-index:3;opacity:0;transition:.2s;backdrop-filter:blur(3px);
+}
+.mq-play svg{width:19px;height:19px;margin-left:2px}
+.mq.is-playing .mq-play svg{margin-left:0}
+.mq:hover .mq-play,.mq.is-playing .mq-play{opacity:1}
+.mq-play:hover,.mq.is-playing .mq-play{background:var(--grad);border-color:transparent}
+.mq.is-playing .mq-cover{outline:2px solid rgba(180,92,255,.65);outline-offset:2px}
+.marquee.is-paused .marquee-track{animation-play-state:paused}
+@media (hover:none){.mq-play{opacity:1}} /* на тач-устройствах кнопка видна всегда */
+</style>
 </head>
 <body>
 
@@ -1738,245 +1976,9 @@ body{background:#FFFFFF}
 })();
 </script>
 
-<style>
-/* ============================================================
-   MOBILE DRAWER + FULL RESPONSIVE
-   ============================================================ */
 
-/* --- burger button --- */
-.mob-burger{
-  display:none;flex-direction:column;justify-content:center;gap:5px;
-  width:44px;height:44px;background:transparent;border:none;cursor:pointer;padding:10px;
-  border-radius:10px;flex:0 0 auto;margin-right:4px;
-}
-.mob-burger span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;transition:.2s}
-.mob-burger:hover span{background:rgba(255,255,255,.75)}
 
-/* --- overlay --- */
-.mob-overlay{
-  display:none;position:fixed;inset:0;z-index:100;
-  background:rgba(8,6,18,.55);backdrop-filter:blur(4px);opacity:0;transition:opacity .28s;
-}
-.mob-overlay.is-open{opacity:1}
 
-/* --- drawer --- */
-.mob-drawer{
-  position:fixed;top:0;right:0;bottom:0;z-index:101;
-  width:min(82vw,320px);
-  background:linear-gradient(175deg,#0E1330 0%,#1A1640 55%,#2A1840 100%);
-  transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);
-  display:flex;flex-direction:column;padding:24px 0 40px;
-  box-shadow:-8px 0 40px rgba(0,0,0,.5);
-}
-.mob-drawer.is-open{transform:translateX(0)}
-.mob-overlay,.mob-drawer{pointer-events:none}
-.mob-overlay.is-open,.mob-drawer.is-open{pointer-events:auto}
-
-/* close button */
-.mob-close{
-  align-self:flex-end;margin-right:20px;margin-bottom:20px;
-  width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.14);display:grid;place-items:center;cursor:pointer;
-  color:#fff;transition:.18s;flex:0 0 auto;
-}
-.mob-close:hover{background:rgba(255,255,255,.16)}
-.mob-close svg{width:18px;height:18px}
-
-/* nav list */
-.mob-nav{list-style:none;padding:0;margin:0;overflow-y:auto;}
-.mob-nav li{border-bottom:1px solid rgba(255,255,255,.1)}
-.mob-nav li:first-child{border-top:1px solid rgba(255,255,255,.1)}
-.mob-nav a{
-  display:block;padding:20px 28px;
-  font-family:'Onest','Golos Text',system-ui,sans-serif;
-  font-size:20px;font-weight:400;color:#fff;letter-spacing:-.01em;
-  transition:background .16s,padding-left .16s;
-}
-.mob-nav a:hover{background:rgba(255,255,255,.07);padding-left:36px}
-
-/* show burger at mobile */
-@media (max-width:1080px){
-  .mob-burger{display:flex}
-}
-
-/* ============================================================
-   FULL MOBILE LAYOUT (≤ 767px)
-   ============================================================ */
-@media (max-width:767px){
-
-  /* layout */
-  .wrap{padding:0 18px}
-  .section{padding:56px 0}
-  .section--tight{padding:40px 0}
-  .sec-head{margin-bottom:32px}
-
-  /* type */
-  .h-sec{font-size:30px;max-width:none}
-  .sub-sec{font-size:16px}
-  .hero h1{font-size:30px;letter-spacing:-.02em}
-  .hero-sub{font-size:16px;margin-top:16px}
-
-  /* header */
-  .hdr-in{height:62px;gap:10px}
-  .hdr-cta{display:none}
-  .nav{display:none}
-  .logo-img{height:28px}
-
-  /* hero */
-  .hero{padding:36px 0 48px}
-  .hero-grid{grid-template-columns:1fr;gap:32px}
-  .hero-copy{max-width:none}
-  .hero-cta{flex-direction:column;gap:10px}
-  .hero-cta .btn{width:100%;justify-content:center}
-  .trust{font-size:12.5px;gap:7px}
-  .hero-art{max-width:340px;margin:0 auto}
-  .float-chip{display:none}
-
-  /* marquee */
-  .mq{width:120px}
-  .mq-cover{width:120px;height:120px}
-  .marquee-sec{padding:16px 0 0}
-
-  /* УТП */
-  .utp-grid{grid-template-columns:1fr;gap:14px}
-  .utp{padding:22px 20px 24px}
-  .utp h3{font-size:18px}
-
-  /* 3 шага */
-  .steps{grid-template-columns:1fr;gap:0}
-  .step{padding:24px 22px 26px;border-radius:0}
-  .step:first-child{border-radius:var(--r-lg) var(--r-lg) 0 0}
-  .step:last-child{border-radius:0 0 var(--r-lg) var(--r-lg)}
-  .step+.step{border-top:1px solid var(--border)}
-  .step-arrow{display:none}
-  .steps-cta{flex-direction:column;align-items:center;gap:14px;text-align:center}
-  .steps-cta .btn{width:100%}
-
-  /* треки */
-  .track-grid{grid-template-columns:1fr;gap:18px}
-  .track-title{font-size:16px}
-
-  /* повод */
-  .povod-grid{grid-template-columns:1fr 1fr;gap:12px}
-  .povod{padding:14px 14px;gap:10px}
-  .povod span:not(.pv-ic):not(.arr){font-size:13.5px}
-  .pv-ic{width:36px;height:36px}
-  .pv-ic svg{width:18px;height:18px}
-
-  /* адресаты */
-  .addressees{gap:8px}
-  .chip{padding:8px 14px;font-size:14px}
-
-  /* жанры */
-  .chip-cloud{gap:8px}
-
-  /* где использовать */
-  .use-grid{grid-template-columns:1fr;gap:14px}
-  .use{padding:22px 20px 24px}
-
-  /* отзывы + метрики */
-  .metrics{grid-template-columns:1fr;gap:14px}
-  .metric .num{font-size:40px}
-  .rev-grid{grid-template-columns:1fr;gap:14px}
-
-  /* тарифы */
-  .plans{grid-template-columns:1fr;max-width:none}
-  .plan{padding:28px 24px}
-  .plan .price{font-size:32px}
-
-  /* FAQ */
-  .faq-q h3{font-size:16px}
-  .faq-a{padding:0 18px 22px 60px;font-size:15px}
-
-  /* финальный CTA */
-  .final{padding:56px 24px;border-radius:var(--r-lg)}
-  .final h2{font-size:30px}
-  .final p{font-size:16px}
-  .final .btn{width:100%}
-
-  /* SEO */
-  .seo h2{font-size:22px}
-  .seo p{font-size:15px}
-
-  /* footer */
-  .ftr-grid{grid-template-columns:1fr;gap:28px}
-  .ftr-bot{flex-direction:column;gap:8px;font-size:13px}
-}
-
-/* ============================================================
-   TABLET (768 – 1079px)
-   ============================================================ */
-@media (min-width:768px) and (max-width:1079px){
-  .wrap{padding:0 24px}
-  .section{padding:72px 0}
-  .h-sec{font-size:38px}
-  .hero h1{font-size:44px}
-  .hero-grid{grid-template-columns:1fr;gap:40px}
-  .hero-cta{flex-wrap:wrap}
-  .hero-art{max-width:420px;margin:0 auto}
-  .float-chip{display:none}
-  .utp-grid{grid-template-columns:repeat(2,1fr)}
-  .track-grid{grid-template-columns:repeat(2,1fr)}
-  .steps{grid-template-columns:1fr}
-  .step-arrow{display:none}
-  .povod-grid{grid-template-columns:repeat(2,1fr)}
-  .use-grid{grid-template-columns:repeat(2,1fr)}
-  .plans{grid-template-columns:1fr;max-width:480px}
-  .ftr-grid{grid-template-columns:1fr 1fr}
-  .rev-grid{grid-template-columns:1fr}
-}
-</style>
-
-<style>
-/* ============================================================
-   ТАРИФЫ: 3 в ряд на десктопе, слайдер с точками на мобиле
-   ============================================================ */
-.plans--3{grid-template-columns:repeat(3,1fr);max-width:1120px}
-.plans-dots{display:none}
-@media (min-width:768px) and (max-width:1079px){
-  .plans--3{grid-template-columns:1fr;max-width:480px}
-}
-@media (max-width:767px){
-  .plans.plans--3{
-    display:flex !important;grid-template-columns:none;max-width:none;
-    overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;
-    padding:4px 2px 8px;-webkit-overflow-scrolling:touch;
-    scrollbar-width:none;
-  }
-  .plans.plans--3::-webkit-scrollbar{display:none}
-  .plans.plans--3 .plan{
-    flex:0 0 100%;width:100%;min-width:100%;
-    scroll-snap-align:center;scroll-snap-stop:always;
-  }
-  .plans-dots{display:flex;justify-content:center;gap:9px;margin-top:18px}
-  .plans-dots i{width:8px;height:8px;border-radius:50%;background:var(--border-hi);transition:.2s}
-  .plans-dots i.on{background:var(--violet);transform:scale(1.3)}
-}
-
-/* Ховер акцентных чипов: не перекрашивать текст в белый на светлом фоне */
-.chip--accent:hover{color:var(--text);background:var(--grad-soft);border-color:rgba(180,92,255,.6)}
-
-/* Оверлей мобильного меню: в макете display:none никогда не снимался —
-   затемнение не показывалось и клик мимо меню не закрывал его */
-.mob-overlay{display:block}
-
-/* ============================================================
-   Кнопка play на обложках ленты (как на старой главной)
-   ============================================================ */
-.mq-play{
-  position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);
-  width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
-  background:rgba(10,8,20,.55);border:1px solid rgba(255,255,255,.4);color:#fff;
-  cursor:pointer;z-index:3;opacity:0;transition:.2s;backdrop-filter:blur(3px);
-}
-.mq-play svg{width:19px;height:19px;margin-left:2px}
-.mq.is-playing .mq-play svg{margin-left:0}
-.mq:hover .mq-play,.mq.is-playing .mq-play{opacity:1}
-.mq-play:hover,.mq.is-playing .mq-play{background:var(--grad);border-color:transparent}
-.mq.is-playing .mq-cover{outline:2px solid rgba(180,92,255,.65);outline-offset:2px}
-.marquee.is-paused .marquee-track{animation-play-state:paused}
-@media (hover:none){.mq-play{opacity:1}} /* на тач-устройствах кнопка видна всегда */
-</style>
 
 <script>
 // ============================================================

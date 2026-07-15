@@ -1130,14 +1130,14 @@ body{background:#FFFFFF}
 .hdr .nav a:hover{color:#fff;background:rgba(255,255,255,.08)}
 .hdr .link-login{color:rgba(255,255,255,.85)}
 .hdr .link-login:hover{color:#fff}
-.hdr .logo-img{filter:brightness(0) invert(1)}     /* white logo on navy */
+/* логотип со старой главной — цветной, без обесцвечивания */
 
 /* lilac alternating sections (like live site) stay as --bg-2 */
 .utp--key{background:linear-gradient(165deg,rgba(59,91,219,.08),rgba(20,28,79,.05))}
 
 /* dark navy footer (current site format) */
 .ftr{background:var(--ftr-grad);color:rgba(255,255,255,.7)}
-.ftr .logo-img{filter:brightness(0) invert(1)}
+
 .ftr h4{color:rgba(255,255,255,.5)}
 .ftr a{color:rgba(255,255,255,.72)}
 .ftr a:hover{color:#fff}
@@ -1217,7 +1217,7 @@ body{background:#FFFFFF}
       <span></span><span></span><span></span>
     </button>
     <a href="/" class="logo">
-      <img src="/static/landing2/logo.svg" alt="На Репите" class="logo-img">
+      <img src="/img/logo1.svg" alt="На Репите" class="logo-img">
     </a>
     <nav class="nav">
       <a href="/">Главная</a>
@@ -1656,7 +1656,7 @@ body{background:#FFFFFF}
     <div class="ftr-grid">
       <div>
         <a href="/" class="logo">
-          <img src="/static/landing2/logo.svg" alt="На Репите" class="logo-img">
+          <img src="/img/logo1.svg" alt="На Репите" class="logo-img">
         </a>
         <p class="ftr-about">Нейросеть для создания песен с живым русским вокалом — без акцента, без VPN и без регистрации.</p>
       </div>

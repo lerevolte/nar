@@ -23,6 +23,8 @@
     <link rel="manifest" href="/site.webmanifest">
     {{-- Версия по mtime файла: кэшируется браузером, сбрасывается только при изменении файла --}}
     <link rel="stylesheet" href="/css/landing.css?v={{ @filemtime(public_path('css/landing.css')) ?: 1 }}">
+    {{-- Общий хром нового дизайна: хедер, футер, мобильное меню --}}
+    <link rel="stylesheet" href="/css/chrome2.css?v={{ @filemtime(public_path('css/chrome2.css')) ?: 1 }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css">
     <!-- Yandex.Metrika -->
     <script type="text/javascript">
@@ -48,77 +50,7 @@
 </head>
 <body class="bg-white font-sans text-gray-800 antialiased page-flex">
 
-    <!-- Header -->
-    <header class="header-gradient text-white sticky top-0 z-50" style="height:60px;">
-        <div class="max-w-7xl mx-auto px-4 md:px-8 h-full flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <button id="menu-toggle" class="menu-toggler"><span></span><span></span><span></span></button>
-                <a href="/" class="flex items-center gap-2 font-bold text-xl tracking-wider text-white">
-                    <img src="/img/logo1.svg" style="max-width:95%">
-                </a>
-            </div>
-
-            <!-- <nav class="header-main-menu">
-                <a href="/articles">Статьи</a>
-                @if(isset($menuPages))
-                    @foreach($menuPages as $mp)
-                        <a href="{{ route('public.pages.show', $mp->slug) }}">{{ $mp->title }}</a>
-                    @endforeach
-                @endif
-            </nav> -->
-
-            <div class="flex items-center gap-4">
-                @if(isset($authUser) && $authUser)
-                    <span class="text-sm text-gray-300 hidden md:inline">{{ $authUser->first_name ?? $authUser->username ?? '' }}</span>
-                    <a href="{{ route('dashboard') }}" class="btn-blue">Личный кабинет</a>
-                @else
-                    <a href="{{ route('login') }}" class="login-btn green-btn">Вход</a>
-                    <a href="{{ route('register') }}" class="btn-blue hidden md:inline-flex">Регистрация</a>
-                @endif
-            </div>
-        </div>
-    </header>
-
-    <!-- Sidebar (mobile menu) -->
-    <div id="sidebar-overlay" class="sidebar-overlay"></div>
-    @php
-        $navCurrent = url()->current();
-        $navAriaCurrent = fn ($url) => $navCurrent === $url ? ' aria-current="page"' : '';
-    @endphp
-    <nav id="sidebar-menu" class="sidebar-menu" aria-label="Главное меню">
-        <button id="sidebar-close" class="sidebar-menu-close">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-        <div class="sidebar-nav">
-            <a href="/"{!! $navAriaCurrent(url('/')) !!}>Главная</a>
-            <a href="/articles"{!! $navAriaCurrent(url('/articles')) !!}>Статьи</a>
-            @if(isset($menuPages))
-                @foreach($menuPages as $p)
-                    @php
-                        $pUrl = $p->children->isNotEmpty()
-                            ? route('public.pages.show.child', [$p->slug, $p->children->first()->slug])
-                            : route('public.pages.show', $p->slug);
-                    @endphp
-                    <a href="{{ $pUrl }}"{!! $navAriaCurrent($pUrl) !!}>{{ $p->title }}</a>
-                @endforeach
-            @endif
-            @if(isset($menuStaticPages))
-                @foreach($menuStaticPages as $sp)
-                    @php $spUrl = route('public.static-pages.show', $sp->slug); @endphp
-                    <a href="{{ $spUrl }}"{!! $navAriaCurrent($spUrl) !!}>{{ $sp->title }}</a>
-                @endforeach
-            @endif
-            <a href="/create-song"{!! $navAriaCurrent(url('/create-song')) !!}>Создать трек</a>
-            @if(isset($authUser) && $authUser)
-                <a href="{{ route('charts.index') }}"{!! $navAriaCurrent(route('charts.index')) !!}>Чарты</a>
-                <a href="{{ route('dashboard') }}"{!! $navAriaCurrent(route('dashboard')) !!}>Личный кабинет</a>
-            @else
-                <a href="{{ route('login') }}"{!! $navAriaCurrent(route('login')) !!}>Вход</a>
-                <a href="{{ route('register') }}"{!! $navAriaCurrent(route('register')) !!}>Регистрация</a>
-            @endif
-
-        </div>
-    </nav>
+    @include('partials.site-header')
 
     <!-- Content -->
     <main class="page-main">
@@ -137,37 +69,7 @@
         </div>
     </section>
     <!-- Footer -->
-    <footer class="footer-gradient text-gray-300 px-6 md:px-16" style="padding-top:25px;padding-bottom:48px;">
-        <div class="max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-            <div class="flex flex-col items-center md:items-start">
-                <div class="flex items-center gap-2 font-bold text-xl tracking-wider text-white mb-2">
-                    <img src="/img/logo1.svg">
-                </div>
-            </div>
-            <div>
-                <h4 style="font-size:18px;font-weight:600;color:#fff;margin-bottom:16px;">Навигация</h4>
-                <ul>
-                    <li style="margin:10px 0;"><a href="/articles" style="font-size:16px;color:#dedede;text-decoration:none;">Статьи</a></li>
-                    @if(isset($menuPages))
-                        @foreach($menuPages as $mp)
-                            <li style="margin:10px 0;"><a href="{{ route('public.pages.show', $mp->slug) }}" style="font-size:16px;color:#dedede;text-decoration:none;">{{ $mp->title }}</a></li>
-                        @endforeach
-                    @endif
-                    <li style="margin:10px 0;"><a href="{{ route('login') }}" style="font-size:16px;color:#dedede;text-decoration:none;">Вход</a></li>
-                    <li style="margin:10px 0;"><a href="{{ route('register') }}" style="font-size:16px;color:#dedede;text-decoration:none;">Регистрация</a></li>
-                    <li style="margin:10px 0;"><a href="/oferta" style="font-size:16px;color:#dedede;text-decoration:none;">Оферта</a></li>
-                    <li style="margin:10px 0;"><a href="/privacy" style="font-size:16px;color:#dedede;text-decoration:none;">Политика конфиденциальности</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4 style="font-size:18px;font-weight:600;color:#fff;margin-bottom:16px;">Мессенджеры</h4>
-                <ul>
-                    <li style="margin:10px 0;"><a href="https://t.me/na_repitebot" target="_blank" style="font-size:16px;color:#dedede;text-decoration:none;">Telegram бот</a></li>
-                    <li style="margin:10px 0;"><a href="https://max.ru/id501216944367_bot" target="_blank" style="font-size:16px;color:#dedede;text-decoration:none;">MAX бот</a></li>
-                </ul>
-            </div>
-        </div>
-    </footer>
+    @include('partials.site-footer')
 
     <!-- Track Info Modal -->
     <div id="track-modal" class="modal-overlay">
@@ -211,26 +113,6 @@
         window.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         window.authUserId = {{ isset($authUser) && $authUser ? $authUser->user_id : 'null' }};
 
-        // Mobile sidebar menu
-        (function() {
-            var toggle = document.getElementById('menu-toggle');
-            var menu = document.getElementById('sidebar-menu');
-            var overlay = document.getElementById('sidebar-overlay');
-            var close = document.getElementById('sidebar-close');
-            if (!toggle || !menu || !overlay) return;
-            toggle.addEventListener('click', function() {
-                menu.classList.add('active');
-                overlay.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            });
-            function closeMenu() {
-                menu.classList.remove('active');
-                overlay.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-            if (close) close.addEventListener('click', closeMenu);
-            overlay.addEventListener('click', closeMenu);
-        })();
 
         // Auth tooltip helper
         var authTooltipTimer = null;

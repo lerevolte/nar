@@ -64,7 +64,7 @@
                             <div class="track-card">
                                 <div class="track-card-cover">
                                     @if($track['cover_url'])
-                                        <img src="{{ $track['cover_url'] }}" alt="{{ $track['title'] }}" draggable="false">
+                                        <img src="{{ $track['cover_url'] }}" alt="{{ $track['title'] }}" draggable="false" loading="lazy" width="300" height="300">
                                     @else
                                         <div class="track-cover-placeholder">🎵</div>
                                     @endif
@@ -177,21 +177,21 @@
                     <h3 class="feature-card-title">Песня под любое событие</h3>
                     <p class="feature-card-text">ИИ создаст песню под ваш повод — день рождения, свадьба, признание</p>
                     <div class="feature-card-icon">
-                        <img src="/img/i1.svg">
+                        <img src="/img/i1.svg" alt="" loading="lazy">
                     </div>
                 </div>
                 <div class="feature-card">
                     <h3 class="feature-card-title">Участвуй в чартах</h3>
                     <p class="feature-card-text">Добавляй песни в чарты, голосуй за лучшие треки и получай призы</p>
                     <div class="feature-card-icon">
-                        <img src="/img/i2.svg">
+                        <img src="/img/i2.svg" alt="" loading="lazy">
                     </div>
                 </div>
                 <div class="feature-card">
                     <h3 class="feature-card-title">Все права ваши</h3>
                     <p class="feature-card-text">Созданные треки принадлежат только вам</p>
                     <div class="feature-card-icon">
-                        <img src="/img/i3.svg">
+                        <img src="/img/i3.svg" alt="" loading="lazy">
                     </div>
                 </div>
             </div>

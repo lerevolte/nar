@@ -16,7 +16,7 @@ class SitemapController extends Controller
 
         // Главная (было /home, теперь /)
         $urls[] = [
-            'loc' => $base . '/',
+            'loc' => $base.'/',
             'changefreq' => 'daily',
             'priority' => '1.0',
             'lastmod' => now()->toAtomString(),
@@ -24,7 +24,7 @@ class SitemapController extends Controller
 
         // Листинг статей
         $urls[] = [
-            'loc' => $base . '/articles',
+            'loc' => $base.'/articles',
             'changefreq' => 'daily',
             'priority' => '0.8',
             'lastmod' => now()->toAtomString(),
@@ -39,7 +39,7 @@ class SitemapController extends Controller
             ->chunk(500, function ($articles) use (&$urls, $base) {
                 foreach ($articles as $a) {
                     $urls[] = [
-                        'loc' => $base . '/articles/' . $a->slug,
+                        'loc' => $base.'/articles/'.$a->slug,
                         'changefreq' => 'weekly',
                         'priority' => '0.7',
                         'lastmod' => ($a->updated_at ?? $a->published_at)?->toAtomString(),
@@ -55,9 +55,9 @@ class SitemapController extends Controller
             ->chunk(500, function ($pages) use (&$urls, $base) {
                 foreach ($pages as $p) {
                     if ($p->parent_id && $p->parent) {
-                        $loc = $base . '/pages/' . $p->parent->slug . '/' . $p->slug;
+                        $loc = $base.'/pages/'.$p->parent->slug.'/'.$p->slug;
                     } else {
-                        $loc = $base . '/pages/' . $p->slug;
+                        $loc = $base.'/pages/'.$p->slug;
                     }
                     $urls[] = [
                         'loc' => $loc,
@@ -74,8 +74,9 @@ class SitemapController extends Controller
             ->select('slug', 'updated_at')
             ->chunk(500, function ($pages) use (&$urls, $base) {
                 foreach ($pages as $p) {
+                    // Статические страницы доступны по корневому catch-all маршруту /{slug}
                     $urls[] = [
-                        'loc' => $base . '/p/' . $p->slug,
+                        'loc' => $base.'/'.$p->slug,
                         'changefreq' => 'monthly',
                         'priority' => '0.5',
                         'lastmod' => $p->updated_at?->toAtomString(),

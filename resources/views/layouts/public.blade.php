@@ -21,7 +21,8 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="manifest" href="/site.webmanifest">
-    <link rel="stylesheet" href="/css/landing.css?v={{ time() }}">
+    {{-- Версия по mtime файла: кэшируется браузером, сбрасывается только при изменении файла --}}
+    <link rel="stylesheet" href="/css/landing.css?v={{ @filemtime(public_path('css/landing.css')) ?: 1 }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css">
     <!-- Yandex.Metrika -->
     <script type="text/javascript">
@@ -155,6 +156,7 @@
                     <li style="margin:10px 0;"><a href="{{ route('login') }}" style="font-size:16px;color:#dedede;text-decoration:none;">Вход</a></li>
                     <li style="margin:10px 0;"><a href="{{ route('register') }}" style="font-size:16px;color:#dedede;text-decoration:none;">Регистрация</a></li>
                     <li style="margin:10px 0;"><a href="/oferta" style="font-size:16px;color:#dedede;text-decoration:none;">Оферта</a></li>
+                    <li style="margin:10px 0;"><a href="/privacy" style="font-size:16px;color:#dedede;text-decoration:none;">Политика конфиденциальности</a></li>
                 </ul>
             </div>
             <div>

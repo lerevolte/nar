@@ -1,8 +1,16 @@
 @extends('layouts.public')
 
-@section('title', 'Статьи о создании музыки нейросетью')
+@php $pageNum = $articles->currentPage(); @endphp
+@section('title', $pageNum > 1 ? 'Статьи — страница ' . $pageNum . ' | НА РЕПИТЕ' : 'Статьи о создании музыки нейросетью')
 @section('meta')
     <meta name="description" content="Полезные статьи о генерации песен с помощью ИИ: промпты для создания музыки, инструкции по работе с нейросетью, обзоры аналогов Suno. Учитесь создавать хиты!">
+    @if($pageNum > 1)
+        {{-- Страницы пагинации: self-canonical --}}
+        <link rel="canonical" href="{{ url('/articles') }}?page={{ $pageNum }}">
+    @else
+        {{-- Первая страница (в т.ч. ?page=1): canonical на основную без параметров --}}
+        <link rel="canonical" href="{{ url('/articles') }}">
+    @endif
 @endsection
 @section('jsonld')
     @include('partials.seo.json-ld', [

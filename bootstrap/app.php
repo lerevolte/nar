@@ -12,6 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // SEO: единое зеркало (www → non-www), слеши, регистр, /blog/ → /articles/.
+        // Глобально (не в web-группе), чтобы редиректить и URL без совпавшего маршрута (/blog/*)
+        $middleware->prepend(\App\Http\Middleware\SeoRedirect::class);
+
         $middleware->alias([
             'tg.auth' => \App\Http\Middleware\TelegramAuth::class,
             'miniapp' => \App\Http\Middleware\DetectMiniApp::class,

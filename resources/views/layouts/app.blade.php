@@ -13,7 +13,8 @@
     @endif
     
     <!-- Main Styles -->
-    <link rel="stylesheet" href="/css/app.css?v={{ time() }}">
+    {{-- Версия по mtime файла: кэшируется браузером, сбрасывается только при изменении файла --}}
+    <link rel="stylesheet" href="/css/app.css?v={{ @filemtime(public_path('css/app.css')) ?: 1 }}">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -211,7 +212,7 @@
     </script>
     @endif
     
-    <script src="/js/player.js?v={{ time() }}"></script>
+    <script src="/js/player.js?v={{ @filemtime(public_path('js/player.js')) ?: 1 }}"></script>
 
     <!-- Notification JS -->
     <script>

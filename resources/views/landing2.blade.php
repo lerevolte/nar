@@ -1285,7 +1285,7 @@ body{background:#FFFFFF}
     <div class="marquee-track">
       @foreach([false, true] as $mqDup)
       @foreach($marqueeTracks as $t)
-      <div class="mq"@if($mqDup) aria-hidden="true"@endif><div class="mq-cover"><img src="{{ $t['cover_url'] }}" alt="{{ $t['title'] }}" loading="lazy" width="120" height="120"><div class="mqp"><b>{{ Str::limit($t['title'], 30) }}</b><span>{{ $cleanLabel($t) }}</span></div></div></div>
+      <div class="mq"@if($mqDup) aria-hidden="true"@endif data-song-id="{{ $t['song_id'] }}" data-audio="{{ $t['audio_url'] }}"><div class="mq-cover"><img src="{{ $t['cover_url'] }}" alt="{{ $t['title'] }}" loading="lazy" width="120" height="120"><span class="mq-play" role="button" aria-label="Слушать «{{ $t['title'] }}»"><svg viewBox="0 0 24 24"><use href="#i-play"></use></svg></span><div class="mqp"><b>{{ Str::limit($t['title'], 30) }}</b><span>{{ $cleanLabel($t) }}</span></div></div></div>
       @endforeach
       @endforeach
     </div>
@@ -1943,14 +1943,53 @@ body{background:#FFFFFF}
 /* Оверлей мобильного меню: в макете display:none никогда не снимался —
    затемнение не показывалось и клик мимо меню не закрывал его */
 .mob-overlay{display:block}
+
+/* ============================================================
+   Кнопка play на обложках ленты (как на старой главной)
+   ============================================================ */
+.mq-play{
+  position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);
+  width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(10,8,20,.55);border:1px solid rgba(255,255,255,.4);color:#fff;
+  cursor:pointer;z-index:3;opacity:0;transition:.2s;backdrop-filter:blur(3px);
+}
+.mq-play svg{width:19px;height:19px;margin-left:2px}
+.mq.is-playing .mq-play svg{margin-left:0}
+.mq:hover .mq-play,.mq.is-playing .mq-play{opacity:1}
+.mq-play:hover,.mq.is-playing .mq-play{background:var(--grad);border-color:transparent}
+.mq.is-playing .mq-cover{outline:2px solid rgba(180,92,255,.65);outline-offset:2px}
+.marquee.is-paused .marquee-track{animation-play-state:paused}
+@media (hover:none){.mq-play{opacity:1}} /* на тач-устройствах кнопка видна всегда */
 </style>
 
 <script>
 // ============================================================
-// Реальный аудиоплеер: один трек одновременно + счётчик прослушиваний
+// Реальный аудиоплеер: один трек одновременно (карточки + лента обложек)
 // ============================================================
-(function(){
+window.__nrPlayer = (function(){
   var current = null;
+  return {
+    claim: function(audio, stopCb){
+      if (current && current.audio !== audio) { current.audio.pause(); current.stop(); }
+      current = { audio: audio, stop: stopCb };
+    },
+    release: function(audio){ if (current && current.audio === audio) current = null; }
+  };
+})();
+
+function nrCountPlay(songId, statsRoot){
+  fetch('/api/landing/play', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ song_id: +songId })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (!statsRoot) return;
+    var el = statsRoot.querySelector('.js-plays');
+    if (el && d && d.plays_count != null) el.textContent = d.plays_count.toLocaleString('ru-RU');
+  }).catch(function(){});
+}
+
+(function(){
   function fmt(sec){
     if (!isFinite(sec)) return '–:–';
     sec = Math.floor(sec);
@@ -1984,31 +2023,23 @@ body{background:#FFFFFF}
         if (cur) cur.textContent = fmt(audio.currentTime);
         if (bar && audio.duration) bar.firstElementChild.style.width = (audio.currentTime / audio.duration * 100) + '%';
       });
-      audio.addEventListener('ended', function(){ setIcons(false); current = null; });
+      audio.addEventListener('ended', function(){ setIcons(false); window.__nrPlayer.release(audio); });
       return audio;
     }
     function toggle(){
       var a = ensure();
-      if (current && current.audio !== a) current.stop();
       if (a.paused) {
+        window.__nrPlayer.claim(a, stop);
         a.play();
         setIcons(true);
-        current = { audio: a, stop: stop };
         if (!counted) {
           counted = true;
-          fetch('/api/landing/play', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ song_id: +card.dataset.songId })
-          }).then(function(r){ return r.json(); }).then(function(d){
-            var el = card.querySelector('.js-plays');
-            if (el && d && d.plays_count != null) el.textContent = d.plays_count.toLocaleString('ru-RU');
-          }).catch(function(){});
+          nrCountPlay(card.dataset.songId, card);
         }
       } else {
         a.pause();
         setIcons(false);
-        current = null;
+        window.__nrPlayer.release(a);
       }
     }
     card.querySelectorAll('.js-play').forEach(function(b){ b.addEventListener('click', toggle); });
@@ -2017,6 +2048,49 @@ body{background:#FFFFFF}
       if (!audio || !audio.duration) return;
       var r = bar.getBoundingClientRect();
       audio.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * audio.duration;
+    });
+  });
+})();
+
+// ============================================================
+// Плеер ленты обложек: клик по обложке запускает трек,
+// дубликаты ленты синхронизируются по song-id, анимация встаёт на паузу
+// ============================================================
+(function(){
+  var marquee = document.querySelector('.marquee');
+  var audios = {}, counted = {};
+
+  function setState(songId, playing){
+    document.querySelectorAll('.mq[data-song-id="' + songId + '"]').forEach(function(el){
+      el.classList.toggle('is-playing', playing);
+      var btn = el.querySelector('.mq-play');
+      if (btn) btn.innerHTML = '<svg viewBox="0 0 24 24"><use href="#i-' + (playing ? 'pause' : 'play') + '"></use></svg>';
+    });
+    if (marquee) marquee.classList.toggle('is-paused', playing);
+  }
+
+  document.querySelectorAll('.mq[data-audio]').forEach(function(el){
+    var id = el.dataset.songId;
+    var btn = el.querySelector('.mq-play');
+    if (!btn) return;
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var a = audios[id];
+      if (!a) {
+        a = audios[id] = new Audio(el.dataset.audio);
+        a.preload = 'none';
+        a.addEventListener('ended', function(){ setState(id, false); window.__nrPlayer.release(a); });
+      }
+      if (a.paused) {
+        window.__nrPlayer.claim(a, function(){ setState(id, false); });
+        a.play();
+        setState(id, true);
+        if (!counted[id]) { counted[id] = true; nrCountPlay(id, null); }
+      } else {
+        a.pause();
+        setState(id, false);
+        window.__nrPlayer.release(a);
+      }
     });
   });
 })();

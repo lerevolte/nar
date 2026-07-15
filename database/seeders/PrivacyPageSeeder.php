@@ -76,7 +76,7 @@ class PrivacyPageSeeder extends Seeder
 <p>По вопросам обработки персональных данных обращайтесь:</p>
 <ul>
 <li>E-mail: <a href="mailto:support@narepite.com">support@narepite.com</a></li>
-<li>Telegram: <a href="https://t.me/na_repitebot">t.me/na_repitebot</a></li>
+<li>Telegram: <a href="https://t.me/na_repite_official">t.me/na_repite_official</a></li>
 </ul>
 HTML,
             ]

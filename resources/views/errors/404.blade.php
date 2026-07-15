@@ -19,7 +19,7 @@
         <a href="/articles" class="btn-blue" style="background-color:#374151;">Статьи</a>
     </div>
     <div style="margin-top:36px;font-size:14px;color:#9ca3af;">
-        Не нашли что искали? Напишите нам: <a href="https://t.me/na_repitebot" style="color:#7c3aed;">t.me/na_repitebot</a>
+        Не нашли что искали? Напишите нам: <a href="mailto:support@narepite.com" style="color:#7c3aed;">support@narepite.com</a>
     </div>
 </div>
 @endsection

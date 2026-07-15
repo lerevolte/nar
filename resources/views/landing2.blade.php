@@ -1165,6 +1165,7 @@ body{background:#FFFFFF}
     <g id="i-cal" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="16" rx="2"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path><circle cx="12" cy="15" r="1.6" fill="currentColor" stroke="none"></circle></g>
     <g id="i-balloon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3.3 0 6 2.6 6 6 0 4-3.5 6.6-6 6.6S6 13 6 9c0-3.4 2.7-6 6-6Z"></path><path d="M12 15.6v2M12 17.6c0 1.4 1.6 1.4 1.6 2.8"></path></g>
     <g id="i-star" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.2 6L12 16.9 6.5 19.6l1.2-6L3.2 9.4l6.1-.8L12 3Z"></path></g>
+    <g id="i-heart" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12.57 12 20l-7.5-7.43a5 5 0 1 1 7.5-6.57 5 5 0 1 1 7.5 6.57Z"></path></g>
     <g id="i-star-f" fill="currentColor" stroke="none"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.2 6L12 16.9 6.5 19.6l1.2-6L3.2 9.4l6.1-.8L12 3Z"></path></g>
     <g id="i-snow" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M4.5 7l15 10M19.5 7l-15 10"></path><path d="M12 6l2.2-2M12 6 9.8 4M12 18l2.2 2M12 18l-2.2 2M6 9.7 3.3 9M6 9.7l-.6-2.7M18 14.3l2.7.7M18 14.3l.6 2.7M18 9.7l2.7-.7M18 9.7l-.6-2.7M6 14.3l-2.7.7M6 14.3l.6 2.7"></path></g>
     <g id="i-cap" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.5 9 12 14l9.5-5L12 4Z"></path><path d="M6 11v5c0 1.2 2.7 2.5 6 2.5s6-1.3 6-2.5v-5M21.5 9v5"></path></g>
@@ -1920,18 +1921,28 @@ body{background:#FFFFFF}
   .plans--3{grid-template-columns:1fr;max-width:480px}
 }
 @media (max-width:767px){
-  .plans--3{
-    display:flex;grid-template-columns:none;max-width:none;
+  .plans.plans--3{
+    display:flex !important;grid-template-columns:none;max-width:none;
     overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;
     padding:4px 2px 8px;-webkit-overflow-scrolling:touch;
     scrollbar-width:none;
   }
-  .plans--3::-webkit-scrollbar{display:none}
-  .plans--3 .plan{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always}
+  .plans.plans--3::-webkit-scrollbar{display:none}
+  .plans.plans--3 .plan{
+    flex:0 0 100%;width:100%;min-width:100%;
+    scroll-snap-align:center;scroll-snap-stop:always;
+  }
   .plans-dots{display:flex;justify-content:center;gap:9px;margin-top:18px}
   .plans-dots i{width:8px;height:8px;border-radius:50%;background:var(--border-hi);transition:.2s}
   .plans-dots i.on{background:var(--violet);transform:scale(1.3)}
 }
+
+/* Ховер акцентных чипов: не перекрашивать текст в белый на светлом фоне */
+.chip--accent:hover{color:var(--text);background:var(--grad-soft);border-color:rgba(180,92,255,.6)}
+
+/* Оверлей мобильного меню: в макете display:none никогда не снимался —
+   затемнение не показывалось и клик мимо меню не закрывал его */
+.mob-overlay{display:block}
 </style>
 
 <script>

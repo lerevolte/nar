@@ -88,6 +88,8 @@ class ChartService
             ->get()
             ->unique(fn ($r) => $r->entry?->song_id) // одна песня могла призоваться в нескольких чартах
             ->unique('user_id') // разные авторы
+            // разные пользователи с одинаковым именем выглядят как один автор — тоже дедуплицируем
+            ->unique(fn ($r) => mb_strtolower(trim($r->user->first_name ?? $r->user->username ?? 'Автор')))
             ->take($limit)
             ->values();
 

@@ -205,6 +205,14 @@
         || in_array((string) ($authUser->user_id ?? ''), $trackOpsAllowedIds, true);
 @endphp
 <div class="generate-container">
+    <a href="{{ route('voices') }}" style="display:flex;align-items:center;gap:14px;background:linear-gradient(135deg, var(--accent), var(--accent-hover, var(--accent)));border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:16px;text-decoration:none;color:#fff;box-shadow:var(--shadow-sm, var(--shadow-xs));position:relative;overflow:hidden;">
+        <span style="font-size:32px;line-height:1;flex-shrink:0;">🎙</span>
+        <span style="flex:1;">
+            <span style="display:block;font-size:16px;font-weight:800;letter-spacing:-0.01em;">Записывай песни своим голосом!</span>
+            <span style="display:block;font-size:13px;opacity:0.92;margin-top:3px;">Запиши образец — и ИИ споёт песню твоим голосом 🔥</span>
+        </span>
+        <span style="font-size:20px;flex-shrink:0;">→</span>
+    </a>
     @if($trackOpsAllowed)
     <a href="{{ route('studio') }}" style="display:flex;align-items:center;gap:12px;background:var(--bg-card);border:1.5px solid var(--border-accent);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:16px;text-decoration:none;color:var(--text-primary);box-shadow:var(--shadow-xs);">
         <span style="flex:1;">

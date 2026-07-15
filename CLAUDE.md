@@ -16,7 +16,9 @@ narepite.com — сайт для покупки и генерации песен
 - Очереди: database driver
 - Тесты: PHPUnit 11
 - Vite: laravel-vite-plugin для сборки фронт-ассетов
-- Сервер: Apache (файлы под пользователем apache:apache)
+- Сервер: nginx + php-fpm (НЕ Apache; файлы под пользователем apache:apache — легаси-имя юзера)
+- Конфиг nginx: /etc/nginx/conf.d/narepite.site.conf (+ blog-redirects.inc); после правок: nginx -t && systemctl reload nginx
+- public/.htaccess на проде НЕ работает (nginx) — редиректы делать в nginx или middleware SeoRedirect
 - Сервер: root@94.241.173.252, путь /var/www/narepite-web/
 
 ⚠️ ВАЖНО: это Laravel 12, НЕ 9/10/11.

@@ -7,10 +7,26 @@
 <meta name="robots" content="noindex, nofollow">
 @endif
 <title>На Репите — Нейросеть для генерации песен онлайн | ИИ для создания музыки</title>
-<meta name="description" content="Создайте свою песню за 2 минуты: нейросеть сгенерирует текст, музыку и живой русский вокал без акцента. Без VPN и регистрации, оплата российскими картами.">
+<meta name="description" content="Сайт для создания песен: нейросеть запишет музыку высокого качества, ИИ создаст текст и вокал по вашим словам. Полностью на русском языке. Создайте свой трек всего за 3 шага!">
+<meta name="mailru-domain" content="6EtAEkhlMzrTtqmC" />
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+@unless(!empty($noindex))
+<link rel="canonical" href="{{ url('/') }}">
+@endunless
+<!-- Yandex.Metrika -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();
+    for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
+    k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
+    ym(105879987,"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105879987" style="position:absolute;left:-9999px;" alt=""/></div></noscript>
+@include('partials.seo.json-ld', ['include' => ['organization', 'website', 'webapp', 'best-songs', 'site-nav']])
 <style>/* ============================================================
    На Репите — дизайн-система главной (dark premium)
    ============================================================ */

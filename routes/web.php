@@ -9,9 +9,9 @@ use App\Services\ChartService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [App\Http\Controllers\LandingController::class, 'index'])->name('home');
-// Тестовый URL новой главной (noindex; после проверки переедет на /)
-Route::get('/new-home', [App\Http\Controllers\LandingController::class, 'indexNew'])->name('home.new');
+Route::get('/', [App\Http\Controllers\LandingController::class, 'indexNew'])->name('home');
+// Старый тестовый URL новой главной — теперь редирект на главную
+Route::get('/new-home', fn () => redirect('/', 301));
 
 Route::middleware('telegram.auth.optional')->group(function () {
     // Публичная страница генерации песни (посадочная)

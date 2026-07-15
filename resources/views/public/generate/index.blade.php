@@ -1080,7 +1080,7 @@
     <div class="pg-hero-inner">
         <!-- <div class="pg-hero-badge">🎵 ИИ-композитор · 2 минуты</div> -->
         <h1>Создайте песню с помощью нейросети для особенного момента</h1>
-        <p>Поздравь, признайся, поддержи - <b style="color:white;">собственной песней</b></p>
+        <p>Поздравь, признайся, поддержи — собственной песней. <b style="color:white;">🎙 Хочешь — запиши её своим голосом!</b></p>
         <div class="pg-hero-stats">
             <div class="pg-hero-stat">
                 <div class="pg-hero-stat-value">2 мин</div>

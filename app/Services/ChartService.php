@@ -71,6 +71,52 @@ class ChartService
     }
 
     /**
+     * Витрина «Лучшие песни» для главной и /create-song: случайные призёры
+     * чартов (1–5 места, по chart_rewards) с обложками, не более одной песни
+     * на автора.
+     */
+    public function getShowcaseTracks(int $limit = 20): array
+    {
+        $rewards = ChartReward::with(['entry.song', 'user'])
+            ->whereBetween('position', [1, 5])
+            ->whereHas('entry.song', function ($q) {
+                $q->whereNotNull('file_path')
+                    ->whereNotNull('cover_url')
+                    ->where('cover_url', '!=', '');
+            })
+            ->inRandomOrder()
+            ->get()
+            ->unique(fn ($r) => $r->entry?->song_id) // одна песня могла призоваться в нескольких чартах
+            ->unique('user_id') // разные авторы
+            ->take($limit)
+            ->values();
+
+        return $rewards->map(function ($reward, $index) {
+            $entry = $reward->entry;
+            $song = $entry?->song;
+            if (! $song || ! $song->file_path) {
+                return null;
+            }
+
+            return [
+                'position' => $index + 1,
+                'song_id' => $entry->song_id,
+                'title' => $song->title ?? 'Без названия',
+                'author' => $reward->user->first_name ?? $reward->user->username ?? 'Автор',
+                'votes' => (int) $entry->votes_count,
+                'plays' => $song->plays_count ?? 0,
+                'audio_url' => $song->file_path,
+                'cover_url' => $song->cover_url,
+                'genre' => $song->genre,
+                'occasion' => $song->occasion,
+                'lyrics' => $song->lyrics,
+                'created_at' => $song->created_at ? $song->created_at->format('d.m.Y') : null,
+                'user_id' => $reward->user_id,
+            ];
+        })->filter()->values()->toArray();
+    }
+
+    /**
      * Получить или создать текущий недельный чарт
      */
     public function getOrCreateCurrentChart(): Chart

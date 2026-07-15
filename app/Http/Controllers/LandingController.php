@@ -22,44 +22,8 @@ class LandingController extends Controller
             $authUser = $authService->getUserBySessionToken($token);
         }
 
-        // Топ треки за всё время (суммируем голоса по всем чартам)
-        $entries = ChartEntry::select(
-            'song_id',
-            'user_id',
-            DB::raw('SUM(votes_count) as total_votes'),
-            DB::raw('MIN(id) as id'),
-            DB::raw('MIN(created_at) as first_added')
-        )
-            ->with(['song', 'user'])
-            ->groupBy('song_id', 'user_id')
-            ->having('total_votes', '>', 0)
-            ->orderByDesc('total_votes')
-            ->orderBy('first_added')
-            ->take(20)
-            ->get();
-
-        $topTracks = $entries->map(function ($entry, $index) {
-            $song = $entry->song;
-            if (! $song || ! $song->file_path) {
-                return null;
-            }
-
-            return [
-                'position' => $index + 1,
-                'song_id' => $entry->song_id,
-                'title' => $song->title ?? 'Без названия',
-                'author' => $entry->user->first_name ?? $entry->user->username ?? 'Автор',
-                'votes' => (int) $entry->total_votes,
-                'plays' => $song->plays_count ?? 0,
-                'audio_url' => $song->file_path,
-                'cover_url' => $song->cover_url,
-                'genre' => $song->genre,
-                'occasion' => $song->occasion,
-                'lyrics' => $song->lyrics,
-                'created_at' => $song->created_at ? $song->created_at->format('d.m.Y') : null,
-                'user_id' => $entry->user_id,
-            ];
-        })->filter()->values()->toArray();
+        // Лучшие песни: случайные призёры чартов (1–5 места) с обложками, разные авторы
+        $topTracks = $chartService->getShowcaseTracks(20);
 
         // ID песен, за которые авторизованный пользователь голосовал
         $votedSongIds = [];

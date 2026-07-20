@@ -412,7 +412,7 @@
 .hdr-cta{margin-left:auto;display:flex;align-items:center;gap:14px}
 .link-login{font-weight:600;font-size:15.5px;color:var(--text-mid);transition:.16s}
 .link-login:hover{color:var(--text)}
-.ftr{border-top:1px solid var(--border);padding:60px 0 40px;margin-top:20px;background:var(--bg-2)}
+.ftr{border-top:1px solid var(--border);padding:60px 0 40px;background:var(--bg-2)}
 .ftr-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:40px;margin-bottom:44px}
 .ftr-about{max-width:34ch;color:var(--text-dim);font-size:15px;line-height:1.6;margin-top:16px}
 .ftr h4{font-size:13px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;

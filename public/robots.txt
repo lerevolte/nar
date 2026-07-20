@@ -7,6 +7,10 @@ Disallow: /register
 Disallow: /search/
 Disallow: /search
 Disallow: /search?*
+Disallow: /songs/
+Disallow: /studio
+Disallow: /support
+Disallow: /charts
 Disallow: /*?*utm_
 Disallow: /*?*etext
 Disallow: /*?*openstat
@@ -15,13 +19,14 @@ Disallow: /*?*ysclid
 Disallow: /*?*yclid
 Disallow: /*?*gclid
 Disallow: /*?*fbclid
+Disallow: /*?*ybaip
+Disallow: /*?*source=
 Disallow: /*?*sort=
 Disallow: /*?*order=
 Disallow: /*?*dir=
 Disallow: /*?*filter=
 Disallow: /*?*tag=
 Disallow: /*?*category=
-
 
 User-agent: Yandex
 Allow: /
@@ -32,6 +37,10 @@ Disallow: /register
 Disallow: /search/
 Disallow: /search
 Disallow: /search?*
+Disallow: /songs/
+Disallow: /studio
+Disallow: /support
+Disallow: /charts
 Disallow: /*?*utm_
 Disallow: /*?*etext
 Disallow: /*?*openstat
@@ -40,6 +49,8 @@ Disallow: /*?*ysclid
 Disallow: /*?*yclid
 Disallow: /*?*gclid
 Disallow: /*?*fbclid
+Disallow: /*?*ybaip
+Disallow: /*?*source=
 Disallow: /*?*sort=
 Disallow: /*?*order=
 Disallow: /*?*dir=
@@ -47,11 +58,10 @@ Disallow: /*?*filter=
 Disallow: /*?*tag=
 Disallow: /*?*category=
 
-
 Clean-param: utm_source&utm_medium&utm_campaign
 Clean-param: utm_term&utm_content&etext&openstat
 Clean-param: from&ysclid&yclid&gclid&fbclid
-
+Clean-param: ybaip&source
 
 User-agent: Googlebot
 Allow: /
@@ -62,6 +72,10 @@ Disallow: /register
 Disallow: /search/
 Disallow: /search
 Disallow: /search?*
+Disallow: /songs/
+Disallow: /studio
+Disallow: /support
+Disallow: /charts
 Disallow: /*?*utm_
 Disallow: /*?*etext
 Disallow: /*?*openstat
@@ -70,12 +84,13 @@ Disallow: /*?*ysclid
 Disallow: /*?*yclid
 Disallow: /*?*gclid
 Disallow: /*?*fbclid
+Disallow: /*?*ybaip
+Disallow: /*?*source=
 Disallow: /*?*sort=
 Disallow: /*?*order=
 Disallow: /*?*dir=
 Disallow: /*?*filter=
 Disallow: /*?*tag=
 Disallow: /*?*category=
-
 
 Sitemap: https://narepite.com/sitemap.xml

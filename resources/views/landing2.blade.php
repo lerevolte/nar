@@ -775,7 +775,7 @@ body{
 .seo p b{color:var(--text-mid);font-weight:600}
 
 /* ---------- footer ---------- */
-.ftr{border-top:1px solid var(--border);padding:60px 0 40px;margin-top:20px;background:var(--bg-2)}
+.ftr{border-top:1px solid var(--border);padding:60px 0 40px;background:var(--bg-2)}
 .ftr-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:40px;margin-bottom:44px}
 .ftr-about{max-width:34ch;color:var(--text-dim);font-size:15px;line-height:1.6;margin-top:16px}
 .ftr h4{font-size:13px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;
@@ -1466,7 +1466,7 @@ body{background:#FFFFFF}
 
     <div class="hero-art reveal hero-stack" style="animation-delay:.1s">
       <div class="hero-glow"></div>
-      <img class="hero-b1" src="/static/landing2/cassette.png" alt="Кассета На Репите">
+      <img class="hero-b1" src="/static/landing2/cassette2.png" alt="Кассета На Репите">
 
       <div class="float-chip fc-1">
         <span class="ic"><svg viewBox="0 0 24 24"><use href="#i-bolt"></use></svg></span>

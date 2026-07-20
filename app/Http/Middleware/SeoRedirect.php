@@ -14,9 +14,16 @@ use Symfony\Component\HttpFoundation\Response;
  *  2. Завершающий слеш: /articles/ → /articles (кроме главной)
  *  3. Верхний регистр: /Help → /help
  *  4. Старый раздел /blog/ → актуальные статьи в /articles/
+ *  5. Точечные редиректы конкретных URL (опечатки, переименования)
  */
 class SeoRedirect
 {
+    /** Прямые редиректы «старый путь → новый путь» (после нормализации слеша/регистра). */
+    private const REDIRECT_MAP = [
+        '/articles/prompty-dlya-personalnoy-pesni' => '/articles/prompty-dlya-sozdaniya-personalnoy-pesni',
+        '/privcay' => '/privacy',
+    ];
+
     /** Префиксы путей, где регистр менять нельзя (токены, файлы, пользовательский контент). */
     private const CASE_SENSITIVE_PREFIXES = [
         'qr/', 'dl/', 'reset-password/', 'api/',
@@ -61,6 +68,11 @@ class SeoRedirect
         // 4. Старый раздел /blog/ → /articles/
         if ($targetPath === '/blog' || str_starts_with($targetPath, '/blog/')) {
             $targetPath = $this->blogTarget($targetPath);
+        }
+
+        // 5. Точечные редиректы конкретных URL
+        if (isset(self::REDIRECT_MAP[$targetPath])) {
+            $targetPath = self::REDIRECT_MAP[$targetPath];
         }
 
         if ($targetHost === $host && $targetPath === $path) {
